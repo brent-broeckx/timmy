@@ -1,0 +1,5 @@
+# Managed by AI Companion extension.
+# Records workspace-scope AI asset dependencies in APM format.
+dependencies:
+  apm:
+    - Cegeka-Application-Services/ai-assets/agents/cgk-planner/CGK Planner.agent.md#CGK Planner@v1.0.0
