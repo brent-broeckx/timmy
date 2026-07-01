@@ -2,7 +2,7 @@
 // Individual time block in the day timeline.
 // Supports: selection, time slider, soft-delete, project/work-order assignment.
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useTimelineStore } from '../../store/useTimelineStore'
 import { useConfigStore } from '../../store/useConfigStore'
 import { formatDuration, toDecimalHours } from '@shared/types'
@@ -11,13 +11,14 @@ import type { TimeBlock as TBlock } from '@shared/types'
 type Props = {
   block: TBlock
   onDeleteRequest: (id: string, title: string) => void
+  isFullOverlap?: boolean
 }
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-export function TimeBlock({ block, onDeleteRequest }: Props): React.JSX.Element {
+export function TimeBlock({ block, onDeleteRequest, isFullOverlap = false }: Props): React.JSX.Element {
   const selectedBlockId = useTimelineStore((s) => s.selectedBlockId)
   const setSelectedBlock = useTimelineStore((s) => s.setSelectedBlock)
   const updateBlock = useTimelineStore((s) => s.updateBlock)
@@ -32,22 +33,63 @@ export function TimeBlock({ block, onDeleteRequest }: Props): React.JSX.Element 
   const durationMin = block.durationMinutes
   const decHours = block.decimalHours ?? (durationMin !== null ? toDecimalHours(durationMin) : null)
 
-  // ─── Slider ───────────────────────────────────────────────────────────────────
+  // ─── Slider with debounce ────────────────────────────────────────────────────
+  // localDuration is set immediately for visual feedback; the actual store/DB
+  // update is debounced 500ms to avoid flooding the undo stack and DB on drag.
 
-  const sliderValue = Math.round(durationMin ?? 30)
+  const [localDuration, setLocalDuration] = useState<number | null>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingBlockRef = useRef<TBlock | null>(null)
+
+  // Flush the pending update on unmount so we never lose a drag in progress
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+        if (pendingBlockRef.current) {
+          updateBlock(pendingBlockRef.current)
+          pendingBlockRef.current = null
+        }
+      }
+    }
+  }, [updateBlock])
+
+  const sliderValue = localDuration ?? Math.round(durationMin ?? 30)
+
+  const flushPending = (): void => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
+    if (pendingBlockRef.current) {
+      updateBlock(pendingBlockRef.current)
+      pendingBlockRef.current = null
+      setLocalDuration(null)
+    }
+  }
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const minutes = Number(e.target.value)
+    setLocalDuration(minutes) // immediate visual update
     if (!block.startTime) return
     const newEndTime = new Date(
       new Date(block.startTime).getTime() + minutes * 60_000,
     ).toISOString()
-    updateBlock({
+    const updated: TBlock = {
       ...block,
       endTime: newEndTime,
       durationMinutes: minutes,
       decimalHours: toDecimalHours(minutes),
-    })
+    }
+    pendingBlockRef.current = updated
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      if (pendingBlockRef.current) {
+        updateBlock(pendingBlockRef.current)
+        pendingBlockRef.current = null
+        setLocalDuration(null)
+      }
+    }, 500)
   }
 
   // ─── Delete flow ──────────────────────────────────────────────────────────────
@@ -109,7 +151,17 @@ export function TimeBlock({ block, onDeleteRequest }: Props): React.JSX.Element 
         {/* Header row */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-text-primary truncate">{block.title}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-medium text-text-primary truncate">{block.title}</p>
+              {isFullOverlap && (
+                <span
+                  className="text-xs text-yellow-400 flex-shrink-0"
+                  title="This block fully overlaps with another"
+                >
+                  ⚠
+                </span>
+              )}
+            </div>
             <p className="text-xs text-text-muted mt-0.5">
               {formatTime(block.startTime)}
               {block.endTime ? ` → ${formatTime(block.endTime)}` : ' → running'}
@@ -146,6 +198,7 @@ export function TimeBlock({ block, onDeleteRequest }: Props): React.JSX.Element 
                   step={5}
                   value={sliderValue}
                   onChange={handleSliderChange}
+                  onMouseUp={flushPending}
                   onClick={(e) => e.stopPropagation()}
                   className="w-full accent-accent"
                   aria-label="Duration slider"

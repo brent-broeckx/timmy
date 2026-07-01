@@ -8,15 +8,15 @@
 import { ipcMain } from 'electron'
 import { randomUUID } from 'crypto'
 import { getDb } from '../storage/db'
-import { getOverlayWindow } from '../windows'
+import { getOverlayWindow, getAnchorWindow } from '../windows'
 import { IPC } from '@shared/types'
 import type {
-    TimeBlock,
-    DayBoundary,
-    Project,
-    WorkOrder,
-    AppConfig,
-    IpcResponse,
+  TimeBlock,
+  DayBoundary,
+  Project,
+  WorkOrder,
+  AppConfig,
+  IpcResponse,
 } from '@shared/types'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -119,12 +119,26 @@ function registerTimelineHandlers(): void {
     }
   })
 
+  ipcMain.handle(IPC.TIMELINE_GET_RANGE, (_e, fromDate: string, toDate: string): IpcResponse<TimeBlock[]> => {
+    try {
+      const rows = getDb()
+        .prepare(
+          'SELECT * FROM time_blocks WHERE date >= ? AND date <= ? AND deleted = 0 ORDER BY date ASC, start_time ASC',
+        )
+        .all(fromDate, toDate) as BlockRow[]
+      return ok(rows.map(rowToBlock))
+    } catch (e) {
+      return fail(e)
+    }
+  })
+
   ipcMain.handle(IPC.TIMELINE_ADD_BLOCK, (_e, block: TimeBlock): IpcResponse<TimeBlock> => {
     try {
+      const db = getDb()
       const now = new Date().toISOString()
       const b: TimeBlock = { ...block, id: block.id || randomUUID(), createdAt: now, updatedAt: now }
-      getDb()
-        .prepare(
+
+      db.prepare(
           `INSERT OR IGNORE INTO time_blocks
            (id, date, start_time, end_time, title, notes, project_id, work_order_id,
             source, source_id, duration_minutes, decimal_hours, deleted, created_at, updated_at)
@@ -138,6 +152,10 @@ function registerTimelineHandlers(): void {
           source: b.source, sourceId: b.sourceId, durationMinutes: b.durationMinutes,
           decimalHours: b.decimalHours, createdAt: b.createdAt, updatedAt: b.updatedAt,
         })
+
+      // Notify both renderers so they can sync running-task state
+      getOverlayWindow()?.webContents.send(IPC.STATE_TASK_CHANGED, b)
+      getAnchorWindow()?.webContents.send(IPC.STATE_TASK_CHANGED, b)
       return ok(b)
     } catch (e) {
       return fail(e)
@@ -150,6 +168,7 @@ function registerTimelineHandlers(): void {
       getDb()
         .prepare(
           `UPDATE time_blocks SET
+             date = @date, start_time = @startTime,
              end_time = @endTime, title = @title, notes = @notes,
              project_id = @projectId, work_order_id = @workOrderId,
              duration_minutes = @durationMinutes, decimal_hours = @decimalHours,
@@ -157,11 +176,15 @@ function registerTimelineHandlers(): void {
            WHERE id = @id`,
         )
         .run({
+          date: updated.date, startTime: updated.startTime,
           endTime: updated.endTime, title: updated.title, notes: updated.notes,
           projectId: updated.projectId, workOrderId: updated.workOrderId,
           durationMinutes: updated.durationMinutes, decimalHours: updated.decimalHours,
           updatedAt: updated.updatedAt, id: updated.id,
         })
+      // Notify both renderers so anchor/overlay stay in sync (e.g. running → stopped)
+      getOverlayWindow()?.webContents.send(IPC.STATE_TASK_CHANGED, updated)
+      getAnchorWindow()?.webContents.send(IPC.STATE_TASK_CHANGED, updated)
       return ok(updated)
     } catch (e) {
       return fail(e)
@@ -282,7 +305,8 @@ function registerTaskHandlers(): void {
         durationMinutes: null, decimalHours: null,
         deleted: false, createdAt: now, updatedAt: now,
       }
-      getOverlayWindow()?.webContents.send(IPC.STATE_TASK_CHANGED)
+      getOverlayWindow()?.webContents.send(IPC.STATE_TASK_CHANGED, block)
+      getAnchorWindow()?.webContents.send(IPC.STATE_TASK_CHANGED, block)
       return ok(block)
     } catch (e) {
       return fail(e)
@@ -298,6 +322,15 @@ function registerTaskHandlers(): void {
         .get(id) as BlockRow | undefined
       if (!row) return fail(`Block ${id} not found`)
 
+      // Idempotent: if already stopped or deleted, return current state without modification.
+      // This prevents overwriting a user-set endTime when QuickCapture auto-stops currentTask.
+      if (row.end_time !== null || row.deleted === 1) {
+        const current = rowToBlock(row)
+        getOverlayWindow()?.webContents.send(IPC.STATE_TASK_CHANGED, current)
+        getAnchorWindow()?.webContents.send(IPC.STATE_TASK_CHANGED, current)
+        return ok(current)
+      }
+
       const durationMinutes = (new Date(now).getTime() - new Date(row.start_time).getTime()) / 60_000
       const decimalHours = Math.round((durationMinutes / 60) * 100) / 100
 
@@ -308,7 +341,8 @@ function registerTaskHandlers(): void {
       const stopped = rowToBlock(
         db.prepare('SELECT * FROM time_blocks WHERE id = ?').get(id) as BlockRow,
       )
-      getOverlayWindow()?.webContents.send(IPC.STATE_TASK_CHANGED)
+      getOverlayWindow()?.webContents.send(IPC.STATE_TASK_CHANGED, stopped)
+      getAnchorWindow()?.webContents.send(IPC.STATE_TASK_CHANGED, stopped)
       return ok(stopped)
     } catch (e) {
       return fail(e)

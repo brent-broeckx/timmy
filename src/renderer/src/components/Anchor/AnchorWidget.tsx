@@ -45,7 +45,7 @@ export function AnchorWidget({ onOpenSettings }: Props): React.JSX.Element {
       <div className="flex items-center gap-2 flex-1 min-w-0">
         {runningBlock ? (
           <>
-            <span className="w-2 h-2 rounded-full bg-accent animate-pulse flex-shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-accent ring-pulse flex-shrink-0" />
             <span className="text-sm text-text-primary truncate max-w-[200px]" title={runningBlock.title}>
               {runningBlock.title}
             </span>

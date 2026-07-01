@@ -230,11 +230,21 @@ export const useTimelineStore = create<TimelineStore>((set, get) => ({
   },
 
   syncBlockLocal: (block) => {
-    set((s) => ({
-      blocks: s.blocks.some((b) => b.id === block.id)
-        ? s.blocks.map((b) => (b.id === block.id ? block : b))
-        : sortedInsert(s.blocks, block),
-    }))
+    set((s) => {
+      // If the block is deleted, remove it from the local store (don't re-add it).
+      // This handles the case where TASK_STOP is called on a deleted block and
+      // STATE_TASK_CHANGED is pushed back — without this guard the block would
+      // be re-inserted into the visible list.
+      if (block.deleted) {
+        return { blocks: s.blocks.filter((b) => b.id !== block.id) }
+      }
+      const exists = s.blocks.some((b) => b.id === block.id)
+      return {
+        blocks: exists
+          ? s.blocks.map((b) => (b.id === block.id ? block : b))
+          : sortedInsert(s.blocks, block),
+      }
+    })
   },
 
   setSelectedBlock: (id) => set({ selectedBlockId: id }),

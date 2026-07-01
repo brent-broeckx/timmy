@@ -5,6 +5,7 @@ import type { BrowserWindow } from 'electron'
 
 let _overlay: BrowserWindow | null = null
 let _quickCapture: BrowserWindow | null = null
+let _anchor: BrowserWindow | null = null
 
 export function setOverlayWindow(w: BrowserWindow): void {
   _overlay = w
@@ -12,9 +13,15 @@ export function setOverlayWindow(w: BrowserWindow): void {
 export function setQuickCaptureWindow(w: BrowserWindow): void {
   _quickCapture = w
 }
+export function setAnchorWindow(w: BrowserWindow): void {
+  _anchor = w
+}
 export function getOverlayWindow(): BrowserWindow | null {
   return _overlay
 }
 export function getQuickCaptureWindow(): BrowserWindow | null {
   return _quickCapture
+}
+export function getAnchorWindow(): BrowserWindow | null {
+  return _anchor
 }

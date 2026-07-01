@@ -13,12 +13,13 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { autoUpdater } from 'electron-updater'
 import { initDb, closeDb, getDb } from './storage/db'
 import { registerStorageHandlers } from './ipc/storage'
-import { setOverlayWindow, setQuickCaptureWindow } from './windows'
+import { setOverlayWindow, setQuickCaptureWindow, setAnchorWindow } from './windows'
 import { IPC, DEFAULT_APP_CONFIG } from '@shared/types'
 import type { AppConfig } from '@shared/types'
 
 let overlayWindow: BrowserWindow | null = null
 let quickCaptureWindow: BrowserWindow | null = null
+let anchorWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 
 // ─── Config helpers ───────────────────────────────────────────────────────────
@@ -28,35 +29,83 @@ function readConfig(): AppConfig {
     const row = getDb()
       .prepare('SELECT value FROM config WHERE key = ?')
       .get('app') as { value: string } | undefined
-    if (row) return JSON.parse(row.value) as AppConfig
+    // Merge with defaults so newly-added config fields are always present
+    if (row) return { ...DEFAULT_APP_CONFIG, ...(JSON.parse(row.value) as AppConfig) }
   } catch {
     // fall through
   }
   return { ...DEFAULT_APP_CONFIG }
 }
 
+// ─── Anchor position helpers ─────────────────────────────────────────────────
+
+const ANCHOR_FULL_W = 220
+const ANCHOR_FULL_H = 44
+const ANCHOR_DOT_W = 44
+const ANCHOR_DOT_H = 44
+const ANCHOR_MARGIN = 12
+
+function getAnchorBounds(
+  corner: AppConfig['anchorPosition'],
+  mode: AppConfig['anchorMode'],
+): { x: number; y: number; width: number; height: number } {
+  const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize
+  const width = mode === 'dot-only' ? ANCHOR_DOT_W : ANCHOR_FULL_W
+  const height = mode === 'dot-only' ? ANCHOR_DOT_H : ANCHOR_FULL_H
+  let x: number
+  let y: number
+  switch (corner) {
+    case 'TL': x = ANCHOR_MARGIN;                y = ANCHOR_MARGIN;               break
+    case 'TR': x = sw - width - ANCHOR_MARGIN;   y = ANCHOR_MARGIN;               break
+    case 'BL': x = ANCHOR_MARGIN;                y = sh - height - ANCHOR_MARGIN; break
+    default:   x = sw - width - ANCHOR_MARGIN;   y = sh - height - ANCHOR_MARGIN; break
+  }
+  return { x, y, width, height }
+}
+
+function getOverlayPosition(corner: AppConfig['anchorPosition']): { x: number; y: number } {
+  const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize
+  const ow = 960
+  const oh = 700
+  const ab = getAnchorBounds(corner, 'full')
+  switch (corner) {
+    case 'TL': return { x: ab.x,                    y: ab.y + ab.height + 4 }
+    case 'TR': return { x: ab.x + ab.width - ow,    y: ab.y + ab.height + 4 }
+    case 'BL': return { x: ab.x,                    y: ab.y - oh - 4 }
+    default:   return { x: Math.max(0, sw - ow - ANCHOR_MARGIN), y: Math.max(0, sh - oh - ANCHOR_MARGIN) }
+  }
+}
+
 // ─── Window creation ──────────────────────────────────────────────────────────
 
 function createOverlayWindow(): void {
+  const config = readConfig()
+  const { x, y } = getOverlayPosition(config.anchorPosition)
+
   overlayWindow = new BrowserWindow({
     width: 960,
     height: 700,
+    x,
+    y,
     minWidth: 680,
     minHeight: 480,
     show: false,
     frame: false,
-    transparent: false, // Glassmorphism added in Phase 2
-    backgroundColor: '#0f0f1a',
+    transparent: true,
+    backgroundColor: '#00000000',
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
-      contextIsolation: true,
+      contextIsolation: true
     },
+    resizable: false
   })
+
   setOverlayWindow(overlayWindow)
 
-  overlayWindow.on('ready-to-show', () => overlayWindow?.show())
+  // Do NOT auto-show — the anchor window is the entry point.
+  // The overlay shows only when the user clicks/hovers the anchor.
 
   overlayWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
@@ -69,11 +118,48 @@ function createOverlayWindow(): void {
     overlayWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
-  // Hide to tray instead of quitting when user closes the window
   overlayWindow.on('close', (e) => {
     e.preventDefault()
     overlayWindow?.hide()
+    overlayWindow?.webContents.send(IPC.STATE_OVERLAY_VISIBILITY, false)
   })
+}
+
+function createAnchorWindow(): void {
+  const config = readConfig()
+  if (config.anchorMode === 'hidden') return
+
+  const bounds = getAnchorBounds(config.anchorPosition, config.anchorMode)
+
+  anchorWindow = new BrowserWindow({
+    width: bounds.width,
+    height: bounds.height,
+    x: bounds.x,
+    y: bounds.y,
+    show: false,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    skipTaskbar: true,
+    focusable: false,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false,
+      contextIsolation: true,
+    },
+  })
+  setAnchorWindow(anchorWindow)
+
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    anchorWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}?window=anchor`)
+  } else {
+    anchorWindow.loadFile(join(__dirname, '../renderer/index.html'), {
+      query: { window: 'anchor' },
+    })
+  }
+
+  anchorWindow.on('ready-to-show', () => anchorWindow?.show())
 }
 
 function createQuickCaptureWindow(): void {
@@ -126,9 +212,14 @@ function setupTray(): void {
 function toggleOverlay(): void {
   if (overlayWindow?.isVisible()) {
     overlayWindow.hide()
+    overlayWindow.webContents.send(IPC.STATE_OVERLAY_VISIBILITY, false)
   } else {
+    const config = readConfig()
+    const { x, y } = getOverlayPosition(config.anchorPosition)
+    overlayWindow?.setPosition(x, y)
     overlayWindow?.show()
     overlayWindow?.focus()
+    overlayWindow?.webContents.send(IPC.STATE_OVERLAY_VISIBILITY, true)
   }
 }
 
@@ -155,6 +246,44 @@ function registerWindowHandlers(): void {
     quickCaptureWindow?.focus()
   })
   ipcMain.on(IPC.WINDOW_TOGGLE_OVERLAY, toggleOverlay)
+
+  ipcMain.on(IPC.WINDOW_SHOW_OVERLAY, () => {
+    if (!overlayWindow?.isVisible()) {
+      const config = readConfig()
+      const { x, y } = getOverlayPosition(config.anchorPosition)
+      overlayWindow?.setPosition(x, y)
+      overlayWindow?.show()
+      overlayWindow?.webContents.send(IPC.STATE_OVERLAY_VISIBILITY, true)
+    }
+  })
+
+  ipcMain.on(IPC.WINDOW_HIDE_OVERLAY, () => {
+    overlayWindow?.hide()
+    overlayWindow?.webContents.send(IPC.STATE_OVERLAY_VISIBILITY, false)
+  })
+
+  ipcMain.on(IPC.WINDOW_MINIMIZE_OVERLAY, () => {
+    overlayWindow?.minimize()
+  })
+
+  ipcMain.on(IPC.WINDOW_HIDE_ANCHOR, () => {
+    anchorWindow?.hide()
+  })
+
+  ipcMain.on(IPC.WINDOW_REPOSITION_ANCHOR, () => {
+    const config = readConfig()
+    if (!anchorWindow) {
+      createAnchorWindow()
+      return
+    }
+    if (config.anchorMode === 'hidden') {
+      anchorWindow.hide()
+      return
+    }
+    const bounds = getAnchorBounds(config.anchorPosition, config.anchorMode)
+    anchorWindow.setBounds(bounds)
+    anchorWindow.show()
+  })
 }
 
 // ─── App lifecycle ────────────────────────────────────────────────────────────
@@ -172,6 +301,7 @@ app.whenReady().then(() => {
 
   createOverlayWindow()
   createQuickCaptureWindow()
+  createAnchorWindow()
   setupTray()
   registerShortcuts()
 

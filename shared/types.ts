@@ -6,6 +6,7 @@
 export const IPC = {
   // Timeline
   TIMELINE_GET_DAY: 'timeline:getDay',
+  TIMELINE_GET_RANGE: 'timeline:getRange',
   TIMELINE_ADD_BLOCK: 'timeline:addBlock',
   TIMELINE_UPDATE_BLOCK: 'timeline:updateBlock',
   TIMELINE_DELETE_BLOCK: 'timeline:deleteBlock',
@@ -32,8 +33,14 @@ export const IPC = {
   WINDOW_SHOW_QUICK_CAPTURE: 'window:showQuickCapture',
   WINDOW_HIDE_QUICK_CAPTURE: 'window:hideQuickCapture',
   WINDOW_TOGGLE_OVERLAY: 'window:toggleOverlay',
+  WINDOW_SHOW_OVERLAY: 'window:showOverlay',
+  WINDOW_HIDE_OVERLAY: 'window:hideOverlay',
+  WINDOW_MINIMIZE_OVERLAY: 'window:minimizeOverlay',
+  WINDOW_HIDE_ANCHOR: 'window:hideAnchor',
+  WINDOW_REPOSITION_ANCHOR: 'window:repositionAnchor',
   // Push notifications (main → renderer, no response)
   STATE_TASK_CHANGED: 'state:taskChanged',
+  STATE_OVERLAY_VISIBILITY: 'state:overlayVisibility',
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
@@ -103,6 +110,7 @@ export type SubmitFieldMap = {
 export type AppConfig = {
   anchorPosition: 'TL' | 'TR' | 'BL' | 'BR'
   anchorMode: 'full' | 'dot-only' | 'hidden'
+  anchorTrigger: 'click' | 'hover'
   quickCaptureShortcut: string
   theme: 'dark' | 'light'
   glassIntensity: number // 0–100
@@ -115,6 +123,7 @@ export type AppConfig = {
 export const DEFAULT_APP_CONFIG: AppConfig = {
   anchorPosition: 'BR',
   anchorMode: 'full',
+  anchorTrigger: 'click',
   quickCaptureShortcut: 'CommandOrControl+Shift+Space',
   theme: 'dark',
   glassIntensity: 80,

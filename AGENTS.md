@@ -66,15 +66,11 @@ timmy/
 
 ## Current Phase
 
-**Phase 1 — Core Loop (MVP)** — see `plans/phase1-core-loop.md` for detail.
+**Phase 2 — Polish & Glass UI** ✅ COMPLETE — see `plans/phase2-polish-glass-ui.md` for detail.
 
-Do NOT implement Phase 2+ features unless explicitly asked. The boundary is strict:
-- No glassmorphism / window transparency
-- No anchor corner positioning
-- No quick-capture autocomplete or slash commands
-- No external connectors (calendar, git, Jira)
-- No AI routing
-- No Playwright submit
+**Phase 1 — Core Loop (MVP)** ✅ COMPLETE
+
+Do NOT implement Phase 3+ features unless explicitly asked.
 
 ---
 

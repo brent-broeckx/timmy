@@ -1,5 +1,6 @@
 import { OverlayPanel } from './components/Overlay/OverlayPanel'
 import { QuickCaptureBar } from './components/QuickCapture/QuickCaptureBar'
+import { AnchorRoot } from './components/Anchor/AnchorRoot'
 
 function App(): React.JSX.Element {
   const params = new URLSearchParams(window.location.search)
@@ -7,6 +8,10 @@ function App(): React.JSX.Element {
 
   if (windowType === 'quickcapture') {
     return <QuickCaptureBar />
+  }
+
+  if (windowType === 'anchor') {
+    return <AnchorRoot />
   }
 
   return <OverlayPanel />

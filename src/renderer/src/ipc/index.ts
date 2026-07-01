@@ -8,13 +8,35 @@ import type { TimeBlock, DayBoundary, Project, WorkOrder, AppConfig, IpcResponse
 async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
   const response = await window.timmy.invoke<T>(channel, ...args)
   if (response.error) throw new Error(response.error)
-  // The IpcResponse<void> case: data is undefined/null but no error = success
   return response.data as T
 }
+
+// ─── Push wrapper registry ──────────────────────────────────────────────────
+// Electron IPC calls listeners with (IpcRendererEvent, ...payload).
+// We strip the event and pass only the payload to typed callbacks.
+// The wrapper reference must be stable so onPush/offPush are symmetric.
+const _pushWrappers = new Map<unknown, (...args: unknown[]) => void>()
+
+function registerPush<T>(cb: (arg: T) => void, channel: string): void {
+  const wrapper = (...args: unknown[]): void => cb(args[1] as T)
+  _pushWrappers.set(cb, wrapper)
+  window.timmy.onPush(channel, wrapper)
+}
+
+function unregisterPush<T>(cb: (arg: T) => void, channel: string): void {
+  const wrapper = _pushWrappers.get(cb)
+  if (wrapper) {
+    window.timmy.offPush(channel, wrapper)
+    _pushWrappers.delete(cb)
+  }
+}
+
+// ─── IPC client ─────────────────────────────────────────────────────────────
 
 export const ipc = {
   timeline: {
     getDay: (date: string) => invoke<TimeBlock[]>(IPC.TIMELINE_GET_DAY, date),
+    getRange: (from: string, to: string) => invoke<TimeBlock[]>(IPC.TIMELINE_GET_RANGE, from, to),
     getBoundary: (date: string) => invoke<DayBoundary | null>(IPC.TIMELINE_GET_BOUNDARY, date),
     continueDay: (date: string) => invoke<DayBoundary>(IPC.TIMELINE_CONTINUE_DAY, date),
     addBlock: (block: TimeBlock) => invoke<TimeBlock>(IPC.TIMELINE_ADD_BLOCK, block),
@@ -52,12 +74,24 @@ export const ipc = {
     hideQuickCapture: () => window.timmy.send(IPC.WINDOW_HIDE_QUICK_CAPTURE),
     showQuickCapture: () => window.timmy.send(IPC.WINDOW_SHOW_QUICK_CAPTURE),
     toggleOverlay: () => window.timmy.send(IPC.WINDOW_TOGGLE_OVERLAY),
+    showOverlay: () => window.timmy.send(IPC.WINDOW_SHOW_OVERLAY),
+    hideOverlay: () => window.timmy.send(IPC.WINDOW_HIDE_OVERLAY),
+    minimizeOverlay: () => window.timmy.send(IPC.WINDOW_MINIMIZE_OVERLAY),
+    hideAnchor: () => window.timmy.send(IPC.WINDOW_HIDE_ANCHOR),
+    repositionAnchor: () => window.timmy.send(IPC.WINDOW_REPOSITION_ANCHOR),
   },
-  onTaskChanged: (cb: () => void): void => {
-    window.timmy.onPush(IPC.STATE_TASK_CHANGED, cb)
+  // Push: main → renderer with block payload
+  onTaskChanged: (cb: (block: TimeBlock) => void): void => {
+    registerPush(cb, IPC.STATE_TASK_CHANGED)
   },
-  offTaskChanged: (cb: () => void): void => {
-    window.timmy.offPush(IPC.STATE_TASK_CHANGED, cb)
+  offTaskChanged: (cb: (block: TimeBlock) => void): void => {
+    unregisterPush(cb, IPC.STATE_TASK_CHANGED)
+  },
+  onOverlayVisibility: (cb: (visible: boolean) => void): void => {
+    registerPush(cb, IPC.STATE_OVERLAY_VISIBILITY)
+  },
+  offOverlayVisibility: (cb: (visible: boolean) => void): void => {
+    unregisterPush(cb, IPC.STATE_OVERLAY_VISIBILITY)
   },
 }
 

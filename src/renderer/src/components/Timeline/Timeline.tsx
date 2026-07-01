@@ -1,99 +1,250 @@
 // src/renderer/src/components/Timeline/Timeline.tsx
-// Ordered list of time blocks for the current day.
-// Handles Ctrl+Z for undo and manages the soft-delete toast.
+// Container: navigation toolbar + day/month view switcher.
+// Handles keyboard undo and the soft-delete toast.
 
-import { useEffect, useCallback, useState } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useTimelineStore } from '../../store/useTimelineStore'
 import { useTaskStore } from '../../store/useTaskStore'
-import { TimeBlock } from './TimeBlock'
+import { DayView } from './DayView'
+import { MonthView } from './MonthView'
+import { BlockModal } from './BlockModal'
 import { SoftDeleteToast } from './SoftDeleteToast'
+import type { TimeBlock } from '@shared/types'
+
+type View = 'day' | 'month'
+
+// ── Date helpers ──────────────────────────────────────────────────────────────
+
+function addDays(date: string, n: number): string {
+  const d = new Date(date + 'T12:00:00')
+  d.setDate(d.getDate() + n)
+  return d.toISOString().split('T')[0]
+}
+
+function formatDayLabel(date: string): string {
+  return new Date(date + 'T12:00:00').toLocaleDateString(undefined, {
+    weekday: 'long', month: 'long', day: 'numeric',
+  })
+}
+
+function formatMonthLabel(year: number, month: number): string {
+  return new Date(year, month, 1).toLocaleDateString(undefined, {
+    month: 'long', year: 'numeric',
+  })
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export function Timeline(): React.JSX.Element {
+  const today = new Date().toISOString().split('T')[0]
+
+  const [view, setView] = useState<View>('day')
+  const [date, setDate] = useState(today)
+  const [monthState, setMonthState] = useState({
+    year: new Date().getFullYear(),
+    month: new Date().getMonth(),
+  })
+
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalBlock, setModalBlock] = useState<TimeBlock | null>(null)
+  const [modalStartTime, setModalStartTime] = useState<string | null>(null)
+  const [modalDate, setModalDate] = useState(today)
+
+  // Soft-delete toast
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null)
+
   const blocks = useTimelineStore((s) => s.blocks)
   const isLoading = useTimelineStore((s) => s.isLoading)
-  const undo = useTimelineStore((s) => s.undo)
+  const loadDay = useTimelineStore((s) => s.loadDay)
   const deleteBlock = useTimelineStore((s) => s.deleteBlock)
+  const undo = useTimelineStore((s) => s.undo)
   const currentTask = useTaskStore((s) => s.currentTask)
   const clearCurrentTask = useTaskStore((s) => s.clearCurrentTask)
 
-  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null)
+  // Keep a stable ref so Ctrl+Z handler closure is always fresh
+  const undoRef = useRef(undo)
+  const currentTaskRef = useRef(currentTask)
+  const clearRef = useRef(clearCurrentTask)
+  useEffect(() => { undoRef.current = undo }, [undo])
+  useEffect(() => { currentTaskRef.current = currentTask }, [currentTask])
+  useEffect(() => { clearRef.current = clearCurrentTask }, [clearCurrentTask])
 
-  // Called by TimeBlock when user triggers a delete
-  const handleDeleteRequest = useCallback(
-    (id: string, title: string): void => {
-      deleteBlock(id)
-      setPendingDelete({ id, title })
-    },
-    [deleteBlock],
-  )
+  // ── Navigation ────────────────────────────────────────────────────────────
 
-  const handleUndoDelete = (): void => {
-    setPendingDelete(null)
-    undo()
+  const goToDay = useCallback((d: string): void => {
+    setDate(d)
+    setView('day')
+    loadDay(d)
+  }, [loadDay])
+
+  const handlePrev = (): void => {
+    if (view === 'day') {
+      const d = addDays(date, -1)
+      setDate(d)
+      loadDay(d)
+    } else {
+      const nd = new Date(monthState.year, monthState.month - 1, 1)
+      setMonthState({ year: nd.getFullYear(), month: nd.getMonth() })
+    }
   }
 
-  const handleConfirmDelete = (): void => {
-    setPendingDelete(null)
+  const handleNext = (): void => {
+    if (view === 'day') {
+      const d = addDays(date, 1)
+      setDate(d)
+      loadDay(d)
+    } else {
+      const nd = new Date(monthState.year, monthState.month + 1, 1)
+      setMonthState({ year: nd.getFullYear(), month: nd.getMonth() })
+    }
   }
 
-  // Global Ctrl+Z handler
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        e.preventDefault()
-        undo().then(() => {
-          // If the current task was removed by undo, clear the task store reference
-          const updatedBlocks = useTimelineStore.getState().blocks
-          if (currentTask && !updatedBlocks.find((b) => b.id === currentTask.id)) {
-            clearCurrentTask()
-          }
-        })
-      }
-    },
-    [undo, currentTask, clearCurrentTask],
-  )
+  const handleToday = (): void => {
+    if (view === 'day') { goToDay(today) }
+    else setMonthState({ year: new Date().getFullYear(), month: new Date().getMonth() })
+  }
+
+  // ── Modal helpers ─────────────────────────────────────────────────────────
+
+  const openNewBlock = (startTime: string, forDate: string): void => {
+    setModalBlock(null)
+    setModalStartTime(startTime)
+    setModalDate(forDate)
+    setModalOpen(true)
+  }
+
+  const openEditBlock = (block: TimeBlock): void => {
+    setModalBlock(block)
+    setModalDate(block.date)
+    setModalOpen(true)
+  }
+
+  const handleDelete = (id: string, title: string): void => {
+    deleteBlock(id)
+    setPendingDelete({ id, title })
+  }
+
+  // ── Global Ctrl+Z ─────────────────────────────────────────────────────────
+
+  const handleKeyDown = useCallback((e: KeyboardEvent): void => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault()
+      undoRef.current().then(() => {
+        const updatedBlocks = useTimelineStore.getState().blocks
+        if (currentTaskRef.current && !updatedBlocks.find(b => b.id === currentTaskRef.current!.id)) {
+          clearRef.current()
+        }
+      })
+    }
+  }, [])
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
-  if (isLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-text-muted text-sm">
-        Loading…
-      </div>
-    )
-  }
+  // ── Render ────────────────────────────────────────────────────────────────
 
-  if (blocks.length === 0) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center text-center px-8 gap-3">
-        <p className="text-text-muted text-sm">No tasks yet today.</p>
-        <p className="text-text-muted text-xs">
-          Press{' '}
-          <kbd className="border border-border rounded px-1 py-0.5">Ctrl+Shift+Space</kbd> to
-          capture a task.
-        </p>
-      </div>
-    )
-  }
+  const isToday = view === 'day' && date === today
+  const canGoNext = view === 'month' || date < today
+  const label = view === 'day'
+    ? formatDayLabel(date)
+    : formatMonthLabel(monthState.year, monthState.month)
 
   return (
-    <>
-      <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
-        {blocks.map((block) => (
-          <TimeBlock key={block.id} block={block} onDeleteRequest={handleDeleteRequest} />
-        ))}
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+
+      {/* ── Toolbar ── */}
+      <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 border-b border-white/10">
+        {/* Prev */}
+        <button
+          onClick={handlePrev}
+          className="w-6 h-6 flex items-center justify-center rounded text-lg leading-none text-text-muted hover:text-text-primary hover:bg-white/10 transition-colors"
+          title="Previous"
+        >‹</button>
+
+        {/* Today */}
+        {!isToday && (
+          <button
+            onClick={handleToday}
+            className="text-xs px-2 py-0.5 rounded border border-border text-text-muted hover:text-text-primary hover:border-border-hover transition-colors"
+          >Today</button>
+        )}
+
+        {/* Next */}
+        <button
+          onClick={handleNext}
+          disabled={!canGoNext}
+          className="w-6 h-6 flex items-center justify-center rounded text-lg leading-none text-text-muted hover:text-text-primary hover:bg-white/10 disabled:opacity-30 transition-colors"
+          title="Next"
+        >›</button>
+
+        {/* Date label */}
+        <span className="flex-1 text-xs text-text-muted text-center truncate select-none">{label}</span>
+
+        {/* Add block */}
+        <button
+          onClick={() => openNewBlock(new Date().toISOString(), view === 'day' ? date : today)}
+          className="text-xs px-2 py-0.5 rounded bg-accent/20 text-accent border border-accent/30 hover:bg-accent/30 transition-colors"
+          title="Add block manually"
+        >+ Add</button>
+
+        {/* View switcher */}
+        <div className="flex rounded-lg overflow-hidden border border-border text-xs">
+          <button
+            onClick={() => setView('day')}
+            className={`px-2 py-0.5 transition-colors ${view === 'day' ? 'bg-accent text-white' : 'text-text-muted hover:text-text-primary hover:bg-white/10'}`}
+          >Day</button>
+          <button
+            onClick={() => setView('month')}
+            className={`px-2 py-0.5 transition-colors ${view === 'month' ? 'bg-accent text-white' : 'text-text-muted hover:text-text-primary hover:bg-white/10'}`}
+          >Month</button>
+        </div>
       </div>
 
+      {/* ── View content ── */}
+      {isLoading ? (
+        <div className="flex-1 flex items-center justify-center text-text-muted text-sm">Loading…</div>
+      ) : view === 'day' ? (
+        <DayView
+          blocks={blocks}
+          date={date}
+          isToday={isToday}
+          onEditBlock={openEditBlock}
+          onAddAtTime={(t) => openNewBlock(t, date)}
+        />
+      ) : (
+        <MonthView
+          year={monthState.year}
+          month={monthState.month}
+          today={today}
+          onDayClick={goToDay}
+        />
+      )}
+
+      {/* ── Block create / edit modal ── */}
+      {modalOpen && (
+        <BlockModal
+          block={modalBlock}
+          initialStartTime={modalStartTime}
+          initialDate={modalDate}
+          onClose={() => setModalOpen(false)}
+          onDelete={(id, title) => {
+            handleDelete(id, title)
+            setModalOpen(false)
+          }}
+        />
+      )}
+
+      {/* ── Soft-delete toast ── */}
       {pendingDelete && (
         <SoftDeleteToast
           message={`"${pendingDelete.title}" deleted`}
-          onUndo={handleUndoDelete}
-          onConfirm={handleConfirmDelete}
+          onUndo={() => { setPendingDelete(null); void undo() }}
+          onConfirm={() => setPendingDelete(null)}
         />
       )}
-    </>
+    </div>
   )
 }
