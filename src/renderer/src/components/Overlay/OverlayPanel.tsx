@@ -84,13 +84,10 @@ export function OverlayPanel(): React.JSX.Element {
     >
       {/* Title bar / drag region with window controls */}
       <div
-        className="flex-shrink-0 h-8 bg-white/5 flex items-center px-3 gap-2"
+        className="flex-shrink-0 h-10 bg-white/5 flex items-center px-3 gap-2"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
-        <span
-          className="text-xs text-text-muted select-none flex-1"
-          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-        >
+        <span className="text-xs text-text-muted select-none flex-1">
           Timmy
         </span>
         {/* Window controls (no-drag so they're clickable) */}
