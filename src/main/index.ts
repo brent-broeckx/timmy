@@ -21,6 +21,7 @@ let overlayWindow: BrowserWindow | null = null
 let quickCaptureWindow: BrowserWindow | null = null
 let anchorWindow: BrowserWindow | null = null
 let tray: Tray | null = null
+let overlayMoved = false
 
 // ─── Config helpers ───────────────────────────────────────────────────────────
 
@@ -123,6 +124,10 @@ function createOverlayWindow(): void {
     overlayWindow?.hide()
     overlayWindow?.webContents.send(IPC.STATE_OVERLAY_VISIBILITY, false)
   })
+
+  overlayWindow.on('moved', () => {
+    overlayMoved = true
+  })
 }
 
 function createAnchorWindow(): void {
@@ -214,9 +219,11 @@ function toggleOverlay(): void {
     overlayWindow.hide()
     overlayWindow.webContents.send(IPC.STATE_OVERLAY_VISIBILITY, false)
   } else {
-    const config = readConfig()
-    const { x, y } = getOverlayPosition(config.anchorPosition)
-    overlayWindow?.setPosition(x, y)
+    if (!overlayMoved) {
+      const config = readConfig()
+      const { x, y } = getOverlayPosition(config.anchorPosition)
+      overlayWindow?.setPosition(x, y)
+    }
     overlayWindow?.show()
     overlayWindow?.focus()
     overlayWindow?.webContents.send(IPC.STATE_OVERLAY_VISIBILITY, true)
@@ -249,10 +256,13 @@ function registerWindowHandlers(): void {
 
   ipcMain.on(IPC.WINDOW_SHOW_OVERLAY, () => {
     if (!overlayWindow?.isVisible()) {
-      const config = readConfig()
-      const { x, y } = getOverlayPosition(config.anchorPosition)
-      overlayWindow?.setPosition(x, y)
+      if (!overlayMoved) {
+        const config = readConfig()
+        const { x, y } = getOverlayPosition(config.anchorPosition)
+        overlayWindow?.setPosition(x, y)
+      }
       overlayWindow?.show()
+      overlayWindow?.focus()
       overlayWindow?.webContents.send(IPC.STATE_OVERLAY_VISIBILITY, true)
     }
   })
@@ -283,6 +293,12 @@ function registerWindowHandlers(): void {
     const bounds = getAnchorBounds(config.anchorPosition, config.anchorMode)
     anchorWindow.setBounds(bounds)
     anchorWindow.show()
+    // Anchor corner changed — reset overlay to default position relative to new corner
+    overlayMoved = false
+    if (overlayWindow?.isVisible()) {
+      const { x, y } = getOverlayPosition(config.anchorPosition)
+      overlayWindow.setPosition(x, y)
+    }
   })
 }
 
