@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTaskStore } from '../../store/useTaskStore'
 import { ipc } from '../../ipc'
 import { findSuggestion } from './suggestions'
-import { filterCommands, resolveCommand, COMMANDS } from './commands'
+import { filterCommands, resolveCommand } from './commands'
 import type { SlashCommand } from './commands'
 
 export function QuickCaptureBar(): React.JSX.Element {
@@ -111,55 +111,58 @@ export function QuickCaptureBar(): React.JSX.Element {
   // Ghost suffix — the part after what the user has typed
   const ghostSuffix = suggestion ? suggestion.slice(value.length) : ''
 
-  return (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-transparent">
-      <div className="w-full mx-4 flex flex-col gap-1.5">
-        {/* Input card */}
-        <div className="relative flex items-center gap-2 bg-surface-elevated border border-border rounded-xl px-4 shadow-2xl">
-          <span className="text-accent text-base flex-shrink-0">
-            {isSlashMode ? '/' : '▶'}
-          </span>
+  const MAX_VISIBLE_COMMANDS = 5
+  const commandsToShow = isSlashMode ? matchedCommands.slice(0, MAX_VISIBLE_COMMANDS) : []
+  const hiddenCount = isSlashMode ? matchedCommands.length - commandsToShow.length : 0
 
-          {/* Ghost-text layer (sits behind the real input) */}
-          <div
-            className="absolute left-0 pl-10 pr-4 text-sm text-text-muted pointer-events-none select-none whitespace-pre font-[inherit]"
-            style={{ top: '50%', transform: 'translateY(-50%)' }}
-            aria-hidden
-          >
-            {value}
-            <span className="opacity-40">{ghostSuffix}</span>
+  return (
+    <div className="w-full h-full flex flex-col bg-transparent pt-4 px-4">
+      <div className="flex flex-col gap-1.5">
+        {/* Input card */}
+        <div className="flex items-center gap-2 bg-surface-elevated border border-border rounded-xl px-4 shadow-2xl">
+          <span className="text-accent text-base shrink-0 pointer-events-none select-none">▶</span>
+
+          {/* Input wrapper: ghost text sits behind a transparent input */}
+          <div className="relative flex-1">
+            <div
+              className="absolute inset-0 flex items-center pointer-events-none select-none overflow-hidden"
+              aria-hidden
+            >
+              <span className="text-sm text-text-primary whitespace-pre">{value}</span>
+              <span className="text-sm text-text-muted opacity-50 whitespace-pre">{ghostSuffix}</span>
+            </div>
+            <input
+              ref={inputRef}
+              type="text"
+              value={value}
+              onChange={(e) => { setValue(e.target.value); setHighlightedCmd(0) }}
+              onKeyDown={handleKeyDown}
+              placeholder="What are you working on?"
+              className="relative w-full bg-transparent text-transparent placeholder-text-muted text-sm py-4 outline-none"
+              style={{ caretColor: 'var(--color-text-primary)' }}
+              autoComplete="off"
+              spellCheck={false}
+            />
           </div>
 
-          <input
-            ref={inputRef}
-            type="text"
-            value={value}
-            onChange={(e) => { setValue(e.target.value); setHighlightedCmd(0) }}
-            onKeyDown={handleKeyDown}
-            placeholder={isSlashMode ? '' : 'What are you working on? (Enter to start, Esc to cancel)'}
-            className="flex-1 bg-transparent text-text-primary placeholder-text-muted text-sm py-4 outline-none relative z-10"
-            autoComplete="off"
-            spellCheck={false}
-          />
-
           {value && !isSlashMode && (
-            <kbd className="text-xs text-text-muted border border-border rounded px-1 py-0.5 flex-shrink-0">
+            <kbd className="text-xs text-text-muted border border-border rounded px-1 py-0.5 shrink-0">
               Enter
             </kbd>
           )}
         </div>
 
-        {/* Ghost-text hint */}
+        {/* Tab-to-complete hint */}
         {suggestion && !isSlashMode && (
           <div className="px-4 text-xs text-text-muted">
-            ↹ Tab to use: <span className="text-text-primary">{suggestion}</span>
+            ↹ Tab to complete
           </div>
         )}
 
         {/* Slash command picker */}
-        {isSlashMode && matchedCommands.length > 0 && (
+        {commandsToShow.length > 0 && (
           <div className="bg-surface-elevated border border-border rounded-xl overflow-hidden shadow-2xl">
-            {matchedCommands.map((cmd, i) => (
+            {commandsToShow.map((cmd, i) => (
               <button
                 key={cmd.name}
                 onClick={() => handleCommandClick(cmd)}
@@ -174,27 +177,11 @@ export function QuickCaptureBar(): React.JSX.Element {
                 <span className="text-xs">{cmd.description}</span>
               </button>
             ))}
-          </div>
-        )}
-
-        {/* Show all commands hint when only '/' is typed */}
-        {value === '/' && COMMANDS.length > 0 && matchedCommands.length === 0 && (
-          <div className="bg-surface-elevated border border-border rounded-xl overflow-hidden shadow-2xl">
-            {COMMANDS.map((cmd, i) => (
-              <button
-                key={cmd.name}
-                onClick={() => handleCommandClick(cmd)}
-                className={[
-                  'w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors',
-                  i === highlightedCmd
-                    ? 'bg-accent/10 text-text-primary'
-                    : 'text-text-muted hover:bg-white/5 hover:text-text-primary',
-                ].join(' ')}
-              >
-                <span className="font-mono text-accent">/{cmd.name}</span>
-                <span className="text-xs">{cmd.description}</span>
-              </button>
-            ))}
+            {hiddenCount > 0 && (
+              <div className="px-4 py-1.5 text-xs text-text-muted border-t border-white/10">
+                +{hiddenCount} more — keep typing to filter
+              </div>
+            )}
           </div>
         )}
       </div>

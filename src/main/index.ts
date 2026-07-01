@@ -173,7 +173,7 @@ function createQuickCaptureWindow(): void {
 
   quickCaptureWindow = new BrowserWindow({
     width: 640,
-    height: 72,
+    height: 260,
     x: Math.round(width / 2 - 320),
     y: Math.round(height * 0.35),
     show: false,
