@@ -145,34 +145,7 @@ Calendar events populate automatically every morning. The timeline for any consu
 
 ---
 
-## Phase 4 — AI Work Order Routing
-*Goal: Activities are automatically mapped to the right work order.*
-
-- [ ] **AI routing engine**
-  - On activity import (meeting, commit, ticket), call AI API with activity metadata + work order descriptions
-  - API call is local (no data retained by AI provider beyond the request)
-  - Returns suggested project + work order
-  - Confidence score shown subtly on the block
-
-- [ ] **Routing config**
-  - Plain-language work order descriptions editable in settings
-  - Routing improves as descriptions are refined
-  - User corrections feed into local preference store (not sent anywhere)
-
-- [ ] **Manual override always available**
-  - Dropdown on every block to reassign project/work order regardless of AI suggestion
-  - Override is instant, no confirmation needed
-
-- [ ] **Routing explainability**
-  - Hover on suggested work order shows brief "Why this?" tooltip
-  - Helps user understand and correct routing over time
-
-### Exit Criteria
-Most activities are routed to the correct work order without user intervention. The timeline goes from scaffold to near-complete automatically for a typical day.
-
----
-
-## Phase 5 — Playwright Auto-Submit
+## Phase 4 — Playwright Auto-Submit
 *Goal: End-of-day submission is one button.*
 
 - [ ] **Setup wizard**
@@ -202,7 +175,7 @@ End-of-day time registration takes under two minutes including review. The tool 
 
 ---
 
-## Phase 6 — Multi-User & Distribution
+## Phase 5 — Multi-User & Distribution
 *Goal: Roll out to colleagues.*
 
 - [ ] **Installer (Windows)**

@@ -26,6 +26,7 @@ export const IPC = {
   PROJECT_LIST: 'project:list',
   PROJECT_CREATE: 'project:create',
   PROJECT_UPDATE: 'project:update',
+  PROJECT_DELETE: 'project:delete',
   WORKORDER_CREATE: 'workorder:create',
   WORKORDER_UPDATE: 'workorder:update',
   WORKORDER_DELETE: 'workorder:delete',
@@ -47,6 +48,7 @@ export const IPC = {
   CALENDAR_PULL_EVENT: 'calendar:pullEvent',
   // Push notifications (main → renderer, no response)
   STATE_TASK_CHANGED: 'state:taskChanged',
+  STATE_PROJECTS_CHANGED: 'state:projectsChanged',
   STATE_OVERLAY_VISIBILITY: 'state:overlayVisibility',
   STATE_CALENDAR_UPDATED: 'state:calendarUpdated',
 } as const
@@ -92,6 +94,12 @@ export type TimeBlock = {
   deleted: boolean
   createdAt: string
   updatedAt: string
+}
+
+export type TaskStartInput = {
+  title: string
+  projectId: string | null
+  workOrderId: string | null
 }
 
 export type DayBoundary = {
@@ -141,6 +149,7 @@ export type AppConfig = {
   theme: 'dark' | 'light'
   glassIntensity: number // 0–100
   undoStackDepth: number // default 20
+  quickCaptureWorkOrderId: string | null
   connectors: ConnectorConfig[]
   submitFieldMap: SubmitFieldMap | null
 }
@@ -154,6 +163,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   theme: 'dark',
   glassIntensity: 80,
   undoStackDepth: 20,
+  quickCaptureWorkOrderId: null,
   connectors: [],
   submitFieldMap: null,
 }

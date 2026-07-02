@@ -3,7 +3,7 @@
 // All other renderer code imports from here — never calls window.timmy directly.
 
 import { IPC } from '@shared/types'
-import type { TimeBlock, DayBoundary, Project, WorkOrder, AppConfig, CalendarEvent, CalendarConnectorStatus, IpcResponse } from '@shared/types'
+import type { TimeBlock, DayBoundary, Project, WorkOrder, AppConfig, CalendarEvent, CalendarConnectorStatus, TaskStartInput, IpcResponse } from '@shared/types'
 
 async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
   const response = await window.timmy.invoke<T>(channel, ...args)
@@ -49,7 +49,7 @@ export const ipc = {
       invoke<DayBoundary>(IPC.TIMELINE_END_DAY, date, endTime),
   },
   task: {
-    start: (title: string) => invoke<TimeBlock>(IPC.TASK_START, title),
+    start: (input: TaskStartInput) => invoke<TimeBlock>(IPC.TASK_START, input),
     stop: (id: string) => invoke<TimeBlock>(IPC.TASK_STOP, id),
     getRecent: () => invoke<string[]>(IPC.TASK_GET_RECENT),
   },
@@ -63,6 +63,7 @@ export const ipc = {
       invoke<Project>(IPC.PROJECT_CREATE, data),
     update: (p: Pick<Project, 'id' | 'name' | 'clientName' | 'active'>) =>
       invoke<void>(IPC.PROJECT_UPDATE, p),
+    delete: (id: string) => invoke<void>(IPC.PROJECT_DELETE, id),
   },
   workorder: {
     create: (data: { projectId: string; code: string; label: string; description: string }) =>
@@ -94,6 +95,12 @@ export const ipc = {
   },
   offTaskChanged: (cb: (block: TimeBlock) => void): void => {
     unregisterPush(cb, IPC.STATE_TASK_CHANGED)
+  },
+  onProjectsChanged: (cb: () => void): void => {
+    registerPush(cb, IPC.STATE_PROJECTS_CHANGED)
+  },
+  offProjectsChanged: (cb: () => void): void => {
+    unregisterPush(cb, IPC.STATE_PROJECTS_CHANGED)
   },
   onOverlayVisibility: (cb: (visible: boolean) => void): void => {
     registerPush(cb, IPC.STATE_OVERLAY_VISIBILITY)

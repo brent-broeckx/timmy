@@ -1,12 +1,12 @@
 import {
-    app,
-    shell,
-    BrowserWindow,
-    ipcMain,
-    Tray,
-    nativeImage,
-    globalShortcut,
-    screen,
+  app,
+  shell,
+  BrowserWindow,
+  ipcMain,
+  Tray,
+  nativeImage,
+  globalShortcut,
+  screen,
 } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -146,14 +146,14 @@ function createAnchorWindow(): void {
     frame: false,
     transparent: true,
     alwaysOnTop: true,
-    resizable: false,
+    resizable: true,
     skipTaskbar: true,
     focusable: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
-      contextIsolation: true,
-    },
+      contextIsolation: true
+    }
   })
   setAnchorWindow(anchorWindow)
 
@@ -161,7 +161,7 @@ function createAnchorWindow(): void {
     anchorWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}?window=anchor`)
   } else {
     anchorWindow.loadFile(join(__dirname, '../renderer/index.html'), {
-      query: { window: 'anchor' },
+      query: { window: 'anchor' }
     })
   }
 

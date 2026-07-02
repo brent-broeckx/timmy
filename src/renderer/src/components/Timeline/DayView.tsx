@@ -238,6 +238,7 @@ export function DayView({ blocks, date, isToday, calendarEvents, onEditBlock, on
             const height = blockHeight(block)
             const colW = 100 / block.totalColumns
             const isRunning = block.endTime === null
+            const needsWorkOrder = !block.workOrderId
             const durationMin = block.durationMinutes ?? (
               isRunning
                 ? nowMinutes - (new Date(block.startTime).getHours() * 60 + new Date(block.startTime).getMinutes())
@@ -252,9 +253,14 @@ export function DayView({ blocks, date, isToday, calendarEvents, onEditBlock, on
                 data-block="1"
                 className={[
                   'absolute rounded-lg border overflow-hidden cursor-pointer transition-all group',
+                  needsWorkOrder
+                    ? 'ring-1 ring-amber-300/30'
+                    : '',
                   isRunning
                     ? 'bg-accent/20 border-accent/50 hover:bg-accent/30 hover:border-accent/80'
-                    : 'bg-surface border-border hover:border-accent/40 hover:bg-surface-elevated',
+                    : needsWorkOrder
+                      ? 'bg-amber-400/8 border-amber-300/35 hover:bg-amber-400/12 hover:border-amber-200/50'
+                      : 'bg-surface border-border hover:border-accent/40 hover:bg-surface-elevated',
                 ].join(' ')}
                 style={{
                   top,
@@ -277,9 +283,13 @@ export function DayView({ blocks, date, isToday, calendarEvents, onEditBlock, on
                   <p className="text-xs font-semibold text-text-primary leading-tight truncate flex-1 min-w-0">
                     {block.title}
                   </p>
-                  {workOrder && (
+                  {workOrder ? (
                     <span className="text-xs text-text-muted shrink-0 truncate max-w-[40%]">
                       {workOrder.code}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-200 shrink-0">
+                      WO needed
                     </span>
                   )}
                 </div>

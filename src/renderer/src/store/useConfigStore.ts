@@ -26,7 +26,8 @@ export const useConfigStore = create<ConfigState & ConfigActions>((set, get) => 
 
   load: async () => {
     try {
-      const [config, projects] = await Promise.all([ipc.config.get(), ipc.project.list()])
+      const [storedConfig, projects] = await Promise.all([ipc.config.get(), ipc.project.list()])
+      const config = { ...DEFAULT_APP_CONFIG, ...storedConfig }
       set({ config, projects, isLoaded: true })
     } catch (err) {
       console.error('[config] load failed:', err)

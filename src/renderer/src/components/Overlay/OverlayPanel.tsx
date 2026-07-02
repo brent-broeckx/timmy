@@ -35,14 +35,19 @@ export function OverlayPanel(): React.JSX.Element {
   const todayRef = useRef(today)
 
   useEffect(() => {
-    loadConfig()
-    loadDay(today)
+    void loadConfig()
+    void loadDay(today)
 
     // Use syncBlockLocal instead of loadDay to avoid overwriting in-progress slider edits
     const handleTaskChanged = (block: TimeBlock): void => {
       useTimelineStore.getState().syncBlockLocal(block)
     }
     ipc.onTaskChanged(handleTaskChanged)
+
+    const handleProjectsChanged = (): void => {
+      void loadConfig()
+    }
+    ipc.onProjectsChanged(handleProjectsChanged)
 
     const handleVisibility = (visible: boolean): void => {
       if (visible) setShowCount((c) => c + 1)
@@ -51,6 +56,7 @@ export function OverlayPanel(): React.JSX.Element {
 
     return () => {
       ipc.offTaskChanged(handleTaskChanged)
+      ipc.offProjectsChanged(handleProjectsChanged)
       ipc.offOverlayVisibility(handleVisibility)
     }
   }, [])

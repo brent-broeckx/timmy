@@ -99,6 +99,17 @@ export function Timeline(): React.JSX.Element {
     return () => ipc.offCalendarUpdated(handleCalendarUpdated)
   }, [loadCalendarEvents, loadDay, view])
 
+  useEffect(() => {
+    const handleProjectsChanged = (): void => {
+      if (view === 'day') {
+        void loadDay(dateRef.current)
+      }
+    }
+
+    ipc.onProjectsChanged(handleProjectsChanged)
+    return () => ipc.offProjectsChanged(handleProjectsChanged)
+  }, [loadDay, view])
+
   // ── Navigation ────────────────────────────────────────────────────────────
 
   const goToDay = useCallback((d: string): void => {

@@ -46,6 +46,18 @@ export function WorkOrderSettings(): React.JSX.Element {
     await reloadProjects()
   }
 
+  const handleDeleteProject = async (project: Project): Promise<void> => {
+    if (!confirm(`Delete project "${project.name}" and all of its work orders? Assigned blocks will be unassigned.`)) return
+    await ipc.project.delete(project.id)
+    if (expandedProjectId === project.id) {
+      setExpandedProjectId(null)
+    }
+    if (editingWO?.projectId === project.id) {
+      setEditingWO(null)
+    }
+    await reloadProjects()
+  }
+
   // ─── Work order CRUD ──────────────────────────────────────────────────────
 
   const startNewWO = (projectId: string): void => {
@@ -144,15 +156,31 @@ export function WorkOrderSettings(): React.JSX.Element {
             <span className="text-xs text-text-muted">
               {project.workOrders.length} WO{project.workOrders.length !== 1 ? 's' : ''}
             </span>
-            <button
-              onClick={(e) => { e.stopPropagation(); handleToggleActive(project) }}
-              className={`text-xs px-2 py-0.5 rounded transition-colors ${
+            <span
+              className={[
+                'text-xs px-2 py-0.5 rounded border',
                 project.active
-                  ? 'text-accent border border-accent/40'
-                  : 'text-text-muted border border-border'
-              }`}
+                  ? 'text-accent border-accent/40 bg-accent/10'
+                  : 'text-text-muted border-border bg-surface-elevated'
+              ].join(' ')}
             >
               {project.active ? 'Active' : 'Inactive'}
+            </span>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleToggleActive(project) }}
+              className={`text-xs px-2 py-0.5 rounded border transition-colors ${
+                project.active
+                  ? 'text-text-muted border-border hover:text-text-primary hover:border-border-hover'
+                  : 'text-accent border-accent/40 hover:bg-accent/10'
+              }`}
+            >
+              {project.active ? 'Set inactive' : 'Set active'}
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); void handleDeleteProject(project) }}
+              className="text-xs px-2 py-0.5 rounded border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              Delete
             </button>
             <span className="text-text-muted text-xs">
               {expandedProjectId === project.id ? '▲' : '▼'}

@@ -8,6 +8,7 @@ export type CommandContext = {
   taskStore: ReturnType<typeof UseTaskStore.getState>
   dismiss: () => void
   setValue: (v: string) => void
+  enterWorkOrderMode: () => void
   recentTasks: string[]
 }
 
@@ -50,6 +51,14 @@ export const COMMANDS: SlashCommand[] = [
     execute: (_arg, ctx) => {
       // Deferred: requires TASK_ADD_NOTE IPC channel (Phase 3)
       ctx.dismiss()
+    },
+  },
+  {
+    name: 'wo',
+    description: 'Pick a work order for this task and future captures',
+    takesArg: true,
+    execute: (_arg, ctx) => {
+      ctx.enterWorkOrderMode()
     },
   },
 ]

@@ -96,6 +96,21 @@ describe('useTaskStore', () => {
     expect(useTimelineStore.getState().blocks).toHaveLength(1)
   })
 
+  it('startTask forwards the selected project and work order', async () => {
+    const { start } = await import('../../ipc').then((m) => m.ipc.task)
+
+    await useTaskStore.getState().startTask('New task', {
+      projectId: 'project-1',
+      workOrderId: 'wo-1',
+    })
+
+    expect(start).toHaveBeenCalledWith({
+      title: 'New task',
+      projectId: 'project-1',
+      workOrderId: 'wo-1',
+    })
+  })
+
   it('stopTask clears currentTask and updates the timeline block', async () => {
     // Set up a running task
     const block = makeBlock({ id: 'test-block-id', title: 'New task' })

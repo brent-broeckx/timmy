@@ -4,7 +4,7 @@
 import { create } from 'zustand'
 import { ipc } from '../ipc'
 import { useTimelineStore } from './useTimelineStore'
-import type { TimeBlock } from '@shared/types'
+import type { TaskStartInput, TimeBlock } from '@shared/types'
 
 type TaskState = {
   currentTask: TimeBlock | null
@@ -13,7 +13,7 @@ type TaskState = {
 
 type TaskActions = {
   /** Start a new task. If a task is running, stop it first. */
-  startTask: (title: string) => Promise<void>
+  startTask: (title: string, assignment?: Pick<TaskStartInput, 'projectId' | 'workOrderId'>) => Promise<void>
   /** Stop the currently running task. Pass the block id when stopping from the overlay (task store currentTask may be null in that window). */
   stopTask: (id?: string) => Promise<void>
   /** Clear the current task reference without any DB/IPC call. */
@@ -26,13 +26,15 @@ export const useTaskStore = create<TaskState & TaskActions>((set, get) => ({
   currentTask: null,
   recentTasks: [],
 
-  startTask: async (title) => {
-    const { currentTask } = get()
+  startTask: async (title, assignment) => {
+    const runningTask = get().currentTask
+      ?? useTimelineStore.getState().blocks.find((block) => block.endTime === null)
+      ?? null
 
     // Stop the running task first (silent — no undo push, just sync local state)
-    if (currentTask) {
+    if (runningTask) {
       try {
-        const stopped = await ipc.task.stop(currentTask.id)
+        const stopped = await ipc.task.stop(runningTask.id)
         useTimelineStore.getState().syncBlockLocal(stopped)
       } catch (err) {
         console.error('[task] failed to stop previous task:', err)
@@ -41,7 +43,11 @@ export const useTaskStore = create<TaskState & TaskActions>((set, get) => ({
 
     try {
       // task:start creates the block in DB and updates recent_tasks
-      const block = await ipc.task.start(title)
+      const block = await ipc.task.start({
+        title,
+        projectId: assignment?.projectId ?? null,
+        workOrderId: assignment?.workOrderId ?? null,
+      })
       set({ currentTask: block })
       // addBlock pushes an undo entry and does INSERT OR IGNORE (no-op since DB already has it)
       await useTimelineStore.getState().addBlock(block)
@@ -52,7 +58,10 @@ export const useTaskStore = create<TaskState & TaskActions>((set, get) => ({
   },
 
   stopTask: async (id?: string) => {
-    const targetId = id ?? get().currentTask?.id
+    const runningTask = get().currentTask
+      ?? useTimelineStore.getState().blocks.find((block) => block.endTime === null)
+      ?? null
+    const targetId = id ?? runningTask?.id
     if (!targetId) return
 
     try {

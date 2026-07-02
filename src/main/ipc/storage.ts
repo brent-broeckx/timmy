@@ -8,15 +8,16 @@
 import { ipcMain } from 'electron'
 import { randomUUID } from 'crypto'
 import { getDb } from '../storage/db'
-import { getOverlayWindow, getAnchorWindow } from '../windows'
-import { IPC } from '@shared/types'
+import { getOverlayWindow, getAnchorWindow, getQuickCaptureWindow } from '../windows'
+import { DEFAULT_APP_CONFIG, IPC } from '@shared/types'
 import type {
-  TimeBlock,
-  DayBoundary,
-  Project,
-  WorkOrder,
-  AppConfig,
-  IpcResponse,
+    TimeBlock,
+    DayBoundary,
+    Project,
+    WorkOrder,
+    AppConfig,
+    TaskStartInput,
+    IpcResponse,
 } from '@shared/types'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -67,6 +68,74 @@ function rowToBlock(row: BlockRow): TimeBlock {
   }
 }
 
+function listProjects(): Project[] {
+  const db = getDb()
+  const projects = db
+    .prepare('SELECT * FROM projects ORDER BY active DESC, name ASC')
+    .all() as { id: string; name: string; client_name: string; active: number }[]
+  const allWOs = db.prepare('SELECT * FROM work_orders').all() as {
+    id: string
+    project_id: string
+    code: string
+    label: string
+    description: string
+  }[]
+
+  return projects.map((project) => ({
+    id: project.id,
+    name: project.name,
+    clientName: project.client_name,
+    active: project.active === 1,
+    workOrders: allWOs
+      .filter((workOrder) => workOrder.project_id === project.id)
+      .map((workOrder) => ({
+        id: workOrder.id,
+        projectId: workOrder.project_id,
+        code: workOrder.code,
+        label: workOrder.label,
+        description: workOrder.description,
+      })),
+  }))
+}
+
+function readAppConfig(): AppConfig {
+  const row = getDb()
+    .prepare('SELECT value FROM config WHERE key = ?')
+    .get('app') as { value: string } | undefined
+
+  if (!row) {
+    return { ...DEFAULT_APP_CONFIG }
+  }
+
+  return { ...DEFAULT_APP_CONFIG, ...(JSON.parse(row.value) as AppConfig) }
+}
+
+function writeAppConfig(config: AppConfig): void {
+  getDb()
+    .prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)')
+    .run('app', JSON.stringify(config))
+}
+
+function sanitizeQuickCaptureWorkOrderSelection(): void {
+  const config = readAppConfig()
+  if (!config.quickCaptureWorkOrderId) return
+
+  const activeWorkOrderIds = new Set(
+    listProjects()
+      .filter((project) => project.active)
+      .flatMap((project) => project.workOrders.map((workOrder) => workOrder.id)),
+  )
+
+  if (!activeWorkOrderIds.has(config.quickCaptureWorkOrderId)) {
+    writeAppConfig({ ...config, quickCaptureWorkOrderId: null })
+  }
+}
+
+function emitProjectsChanged(): void {
+  getOverlayWindow()?.webContents.send(IPC.STATE_PROJECTS_CHANGED)
+  getQuickCaptureWindow()?.webContents.send(IPC.STATE_PROJECTS_CHANGED)
+}
+
 // ─── Registration ─────────────────────────────────────────────────────────────
 
 export function registerStorageHandlers(): void {
@@ -81,11 +150,7 @@ export function registerStorageHandlers(): void {
 function registerConfigHandlers(): void {
   ipcMain.handle(IPC.CONFIG_GET, (): IpcResponse<AppConfig> => {
     try {
-      const row = getDb()
-        .prepare('SELECT value FROM config WHERE key = ?')
-        .get('app') as { value: string } | undefined
-      if (!row) return fail('Config row not found')
-      return ok(JSON.parse(row.value) as AppConfig)
+      return ok(readAppConfig())
     } catch (e) {
       return fail(e)
     }
@@ -93,9 +158,7 @@ function registerConfigHandlers(): void {
 
   ipcMain.handle(IPC.CONFIG_SET, (_e, config: AppConfig): IpcResponse<void> => {
     try {
-      getDb()
-        .prepare('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)')
-        .run('app', JSON.stringify(config))
+      writeAppConfig({ ...DEFAULT_APP_CONFIG, ...config })
       return ok(undefined)
     } catch (e) {
       return fail(e)
@@ -277,19 +340,22 @@ function registerTimelineHandlers(): void {
 // ─── Tasks ────────────────────────────────────────────────────────────────────
 
 function registerTaskHandlers(): void {
-  ipcMain.handle(IPC.TASK_START, (_e, title: string): IpcResponse<TimeBlock> => {
+  ipcMain.handle(IPC.TASK_START, (_e, input: TaskStartInput): IpcResponse<TimeBlock> => {
     try {
       const db = getDb()
       const now = new Date().toISOString()
       const today = now.split('T')[0]
       const id = randomUUID()
+      const title = input.title.trim()
+
+      if (!title) return fail('Task title is required')
 
       db.prepare(
         `INSERT INTO time_blocks
          (id, date, start_time, end_time, title, notes, project_id, work_order_id,
           source, source_id, duration_minutes, decimal_hours, deleted, created_at, updated_at)
-         VALUES (?, ?, ?, NULL, ?, NULL, NULL, NULL, 'manual', NULL, NULL, NULL, 0, ?, ?)`,
-      ).run(id, today, now, title, now, now)
+         VALUES (?, ?, ?, NULL, ?, NULL, ?, ?, 'manual', NULL, NULL, NULL, 0, ?, ?)`,
+      ).run(id, today, now, title, input.projectId, input.workOrderId, now, now)
 
       // Track in recent_tasks (upsert by title)
       db.prepare(
@@ -300,7 +366,7 @@ function registerTaskHandlers(): void {
 
       const block: TimeBlock = {
         id, date: today, startTime: now, endTime: null, title,
-        notes: null, projectId: null, workOrderId: null,
+        notes: null, projectId: input.projectId, workOrderId: input.workOrderId,
         source: 'manual', sourceId: null,
         durationMinutes: null, decimalHours: null,
         deleted: false, createdAt: now, updatedAt: now,
@@ -366,21 +432,7 @@ function registerTaskHandlers(): void {
 function registerProjectHandlers(): void {
   ipcMain.handle(IPC.PROJECT_LIST, (): IpcResponse<Project[]> => {
     try {
-      const db = getDb()
-      const projects = db
-        .prepare('SELECT * FROM projects WHERE active = 1 ORDER BY name ASC')
-        .all() as { id: string; name: string; client_name: string; active: number }[]
-      const allWOs = db.prepare('SELECT * FROM work_orders').all() as {
-        id: string; project_id: string; code: string; label: string; description: string
-      }[]
-      return ok(
-        projects.map((p) => ({
-          id: p.id, name: p.name, clientName: p.client_name, active: p.active === 1,
-          workOrders: allWOs
-            .filter((wo) => wo.project_id === p.id)
-            .map((wo) => ({ id: wo.id, projectId: wo.project_id, code: wo.code, label: wo.label, description: wo.description })),
-        })),
-      )
+      return ok(listProjects())
     } catch (e) {
       return fail(e)
     }
@@ -396,6 +448,7 @@ function registerProjectHandlers(): void {
             'INSERT INTO projects (id, name, client_name, active, created_at) VALUES (?, ?, ?, 1, ?)',
           )
           .run(id, data.name, data.clientName, new Date().toISOString())
+        emitProjectsChanged()
         return ok({ id, name: data.name, clientName: data.clientName, active: true, workOrders: [] })
       } catch (e) {
         return fail(e)
@@ -410,12 +463,28 @@ function registerProjectHandlers(): void {
         getDb()
           .prepare('UPDATE projects SET name = ?, client_name = ?, active = ? WHERE id = ?')
           .run(p.name, p.clientName, p.active ? 1 : 0, p.id)
+        sanitizeQuickCaptureWorkOrderSelection()
+        emitProjectsChanged()
         return ok(undefined)
       } catch (e) {
         return fail(e)
       }
     },
   )
+
+  ipcMain.handle(IPC.PROJECT_DELETE, (_e, id: string): IpcResponse<void> => {
+    try {
+      const db = getDb()
+      db.prepare('UPDATE time_blocks SET project_id = NULL, work_order_id = NULL WHERE project_id = ?').run(id)
+      db.prepare('DELETE FROM work_orders WHERE project_id = ?').run(id)
+      db.prepare('DELETE FROM projects WHERE id = ?').run(id)
+      sanitizeQuickCaptureWorkOrderSelection()
+      emitProjectsChanged()
+      return ok(undefined)
+    } catch (e) {
+      return fail(e)
+    }
+  })
 
   ipcMain.handle(
     IPC.WORKORDER_CREATE,
@@ -430,6 +499,7 @@ function registerProjectHandlers(): void {
             'INSERT INTO work_orders (id, project_id, code, label, description) VALUES (?, ?, ?, ?, ?)',
           )
           .run(id, data.projectId, data.code, data.label, data.description)
+        emitProjectsChanged()
         return ok({ id, projectId: data.projectId, code: data.code, label: data.label, description: data.description })
       } catch (e) {
         return fail(e)
@@ -442,6 +512,8 @@ function registerProjectHandlers(): void {
       getDb()
         .prepare('UPDATE work_orders SET code = ?, label = ?, description = ? WHERE id = ?')
         .run(wo.code, wo.label, wo.description, wo.id)
+      sanitizeQuickCaptureWorkOrderSelection()
+      emitProjectsChanged()
       return ok(undefined)
     } catch (e) {
       return fail(e)
@@ -454,6 +526,8 @@ function registerProjectHandlers(): void {
       // Unassign any blocks referencing this work order
       db.prepare('UPDATE time_blocks SET work_order_id = NULL WHERE work_order_id = ?').run(id)
       db.prepare('DELETE FROM work_orders WHERE id = ?').run(id)
+      sanitizeQuickCaptureWorkOrderSelection()
+      emitProjectsChanged()
       return ok(undefined)
     } catch (e) {
       return fail(e)
