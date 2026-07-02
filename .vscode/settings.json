@@ -7,5 +7,7 @@
   },
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
-  }
+  },
+  "snyk.advanced.organization": "a39cc0de-ad6b-4cfe-98a0-c103083a28e7",
+  "snyk.advanced.autoSelectOrganization": true
 }
