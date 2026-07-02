@@ -5,9 +5,54 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTaskStore } from '../../store/useTaskStore'
 import { ipc } from '../../ipc'
-import { findSuggestion } from './suggestions'
 import { filterCommands, resolveCommand } from './commands'
 import type { SlashCommand } from './commands'
+
+function computeGhost(
+  value: string,
+  recents: string[],
+  matchedCommands: SlashCommand[],
+  highlightedIdx: number
+): { ghostSuffix: string; ghostAcceptValue: string | null; matchCount: number } {
+  if (value.startsWith('/')) {
+    const resolved = resolveCommand(value)
+    if (resolved?.command.name === 'reuse' && resolved.arg) {
+      const argLower = resolved.arg.toLowerCase()
+      const allMatches = recents.filter((r) => r.toLowerCase().startsWith(argLower))
+      const match = allMatches[0]
+      if (match && match.length > resolved.arg.length) {
+        return {
+          ghostSuffix: match.slice(resolved.arg.length),
+          ghostAcceptValue: `/reuse ${match}`,
+          matchCount: allMatches.length
+        }
+      }
+      return { ghostSuffix: '', ghostAcceptValue: null, matchCount: allMatches.length }
+    }
+    const typedName = value.slice(1).split(' ')[0].toLowerCase()
+    const topCmd = matchedCommands[highlightedIdx] ?? matchedCommands[0]
+    if (topCmd && typedName.length < topCmd.name.length) {
+      return {
+        ghostSuffix: topCmd.name.slice(typedName.length),
+        ghostAcceptValue: `/${topCmd.name} `,
+        matchCount: 0
+      }
+    }
+    return { ghostSuffix: '', ghostAcceptValue: null, matchCount: 0 }
+  }
+  if (!value) return { ghostSuffix: '', ghostAcceptValue: null, matchCount: 0 }
+  const lower = value.toLowerCase()
+  const allMatches = recents.filter((r) => r.toLowerCase().startsWith(lower))
+  const suggestion = allMatches[0] ?? null
+  if (suggestion) {
+    return {
+      ghostSuffix: suggestion.slice(value.length),
+      ghostAcceptValue: suggestion,
+      matchCount: allMatches.length
+    }
+  }
+  return { ghostSuffix: '', ghostAcceptValue: null, matchCount: 0 }
+}
 
 export function QuickCaptureBar(): React.JSX.Element {
   const [value, setValue] = useState('')
@@ -29,68 +74,63 @@ export function QuickCaptureBar(): React.JSX.Element {
     ipc.window.hideQuickCapture()
   }
 
-  const suggestion = findSuggestion(value, recentTasks)
   const matchedCommands = filterCommands(value)
   const isSlashMode = value.startsWith('/')
+  const { ghostSuffix, ghostAcceptValue, matchCount } = computeGhost(
+    value,
+    recentTasks,
+    matchedCommands,
+    highlightedCmd
+  )
+
+  const navigateSlash = (key: string): boolean => {
+    if (key === 'ArrowDown') {
+      setHighlightedCmd((i) => Math.min(i + 1, matchedCommands.length - 1))
+      return true
+    }
+    if (key === 'ArrowUp') {
+      setHighlightedCmd((i) => Math.max(i - 1, 0))
+      return true
+    }
+    if (key === 'Enter') {
+      const resolved = resolveCommand(value)
+      resolved?.command.execute(resolved.arg, {
+        taskStore: useTaskStore.getState(),
+        dismiss,
+        setValue,
+        recentTasks
+      })
+      return true
+    }
+    return false
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Escape') {
       e.preventDefault()
       if (isSlashMode && matchedCommands.length > 0) {
-        // First Escape clears the slash input, second dismisses
         setValue('')
-      } else {
-        dismiss()
+        return
       }
+      dismiss()
       return
     }
-
-    // Navigate command list
-    if (isSlashMode && matchedCommands.length > 0) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setHighlightedCmd((i) => Math.min(i + 1, matchedCommands.length - 1))
-        return
-      }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setHighlightedCmd((i) => Math.max(i - 1, 0))
-        return
-      }
-      if (e.key === 'Tab') {
-        e.preventDefault()
-        const cmd = matchedCommands[highlightedCmd]
-        if (cmd) setValue(`/${cmd.name} `)
-        return
-      }
-      if (e.key === 'Enter') {
-        e.preventDefault()
-        const resolved = resolveCommand(value)
-        if (resolved) {
-          resolved.command.execute(resolved.arg, {
-            taskStore: useTaskStore.getState(),
-            dismiss,
-            setValue,
-            recentTasks,
-          })
-        }
-        return
-      }
-    }
-
-    // Accept ghost-text suggestion with Tab
-    if (e.key === 'Tab' && suggestion) {
+    if (e.key === 'Tab' && ghostAcceptValue) {
       e.preventDefault()
-      setValue(suggestion)
+      setValue(ghostAcceptValue)
       return
     }
-
+    if (isSlashMode && matchedCommands.length > 0 && navigateSlash(e.key)) {
+      e.preventDefault()
+      return
+    }
     if (e.key === 'Enter') {
       e.preventDefault()
       const title = value.trim()
-      if (!title || title === '/') return
-      startTask(title)
-      dismiss()
+      if (title && title !== '/') {
+        startTask(title)
+        dismiss()
+      }
     }
   }
 
@@ -103,13 +143,10 @@ export function QuickCaptureBar(): React.JSX.Element {
         taskStore: useTaskStore.getState(),
         dismiss,
         setValue,
-        recentTasks,
+        recentTasks
       })
     }
   }
-
-  // Ghost suffix — the part after what the user has typed
-  const ghostSuffix = suggestion ? suggestion.slice(value.length) : ''
 
   const MAX_VISIBLE_COMMANDS = 5
   const commandsToShow = isSlashMode ? matchedCommands.slice(0, MAX_VISIBLE_COMMANDS) : []
@@ -129,13 +166,18 @@ export function QuickCaptureBar(): React.JSX.Element {
               aria-hidden
             >
               <span className="text-sm text-text-primary whitespace-pre">{value}</span>
-              <span className="text-sm text-text-muted opacity-50 whitespace-pre">{ghostSuffix}</span>
+              <span className="text-sm text-text-muted opacity-50 whitespace-pre">
+                {ghostSuffix}
+              </span>
             </div>
             <input
               ref={inputRef}
               type="text"
               value={value}
-              onChange={(e) => { setValue(e.target.value); setHighlightedCmd(0) }}
+              onChange={(e) => {
+                setValue(e.target.value)
+                setHighlightedCmd(0)
+              }}
               onKeyDown={handleKeyDown}
               placeholder="What are you working on?"
               className="relative w-full bg-transparent text-transparent placeholder-text-muted text-sm py-4 outline-none"
@@ -153,9 +195,14 @@ export function QuickCaptureBar(): React.JSX.Element {
         </div>
 
         {/* Tab-to-complete hint */}
-        {suggestion && !isSlashMode && (
-          <div className="px-4 text-xs text-text-muted">
-            ↹ Tab to complete
+        {ghostSuffix && (
+          <div className="px-4 text-xs text-text-muted flex items-center gap-2">
+            <span>↹ Tab to complete</span>
+            {matchCount > 1 && (
+              <span className="opacity-60">
+                · {matchCount - 1} more match{matchCount > 2 ? 'es' : ''}
+              </span>
+            )}
           </div>
         )}
 
@@ -170,7 +217,7 @@ export function QuickCaptureBar(): React.JSX.Element {
                   'w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors',
                   i === highlightedCmd
                     ? 'bg-accent/10 text-text-primary'
-                    : 'text-text-muted hover:bg-white/5 hover:text-text-primary',
+                    : 'text-text-muted hover:bg-white/5 hover:text-text-primary'
                 ].join(' ')}
               >
                 <span className="font-mono text-accent">/{cmd.name}</span>
