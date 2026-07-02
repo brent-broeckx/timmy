@@ -213,6 +213,7 @@ export function Timeline(): React.JSX.Element {
           isToday={isToday}
           onEditBlock={openEditBlock}
           onAddAtTime={(t) => openNewBlock(t, date)}
+          onDeleteBlock={handleDelete}
         />
       ) : (
         <MonthView

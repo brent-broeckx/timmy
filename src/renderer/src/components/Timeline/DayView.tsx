@@ -5,7 +5,10 @@
 
 import { useMemo, useRef, useEffect, useState } from 'react'
 import { computeLayout } from './layout'
+import { useConfigStore } from '../../store/useConfigStore'
 import type { TimeBlock } from '@shared/types'
+
+type ContextMenu = { x: number; y: number; block: TimeBlock } | null
 
 const HOUR_HEIGHT = 64 // pixels per hour
 const START_HOUR = 6 // 06:00
@@ -40,10 +43,14 @@ interface Props {
   isToday: boolean
   onEditBlock: (block: TimeBlock) => void
   onAddAtTime: (isoTime: string) => void
+  onDeleteBlock: (id: string, title: string) => void
 }
 
-export function DayView({ blocks, date, isToday, onEditBlock, onAddAtTime }: Props): React.JSX.Element {
+export function DayView({ blocks, date, isToday, onEditBlock, onAddAtTime, onDeleteBlock }: Props): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
+  const projects = useConfigStore((s) => s.projects)
+
+  const [contextMenu, setContextMenu] = useState<ContextMenu>(null)
 
   const [nowMinutes, setNowMinutes] = useState(() => {
     const n = new Date()
@@ -148,6 +155,31 @@ export function DayView({ blocks, date, isToday, onEditBlock, onAddAtTime }: Pro
             </div>
           )}
 
+          {/* Context menu */}
+          {contextMenu && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setContextMenu(null)}
+                onContextMenu={(e) => { e.preventDefault(); setContextMenu(null) }}
+              />
+              <div
+                className="fixed z-50 bg-surface-elevated border border-border rounded-lg py-1 shadow-xl text-sm min-w-[120px]"
+                style={{ top: contextMenu.y, left: contextMenu.x }}
+              >
+                <button
+                  className="w-full text-left px-3 py-1.5 hover:bg-border text-red-400"
+                  onClick={() => {
+                    onDeleteBlock(contextMenu.block.id, contextMenu.block.title)
+                    setContextMenu(null)
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            </>
+          )}
+
           {/* Blocks */}
           {layoutBlocks.map((block) => {
             const top = blockY(block.startTime)
@@ -159,6 +191,8 @@ export function DayView({ blocks, date, isToday, onEditBlock, onAddAtTime }: Pro
                 ? nowMinutes - (new Date(block.startTime).getHours() * 60 + new Date(block.startTime).getMinutes())
                 : null
             )
+            const project = projects.find((p) => p.id === block.projectId) ?? null
+            const workOrder = project?.workOrders.find((wo) => wo.id === block.workOrderId) ?? null
 
             return (
               <div
@@ -179,6 +213,7 @@ export function DayView({ blocks, date, isToday, onEditBlock, onAddAtTime }: Pro
                   minHeight: MIN_BLOCK_HEIGHT,
                 }}
                 onClick={(e) => { e.stopPropagation(); onEditBlock(block) }}
+                onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY, block }) }}
                 title={`${block.title}\n${formatTime(block.startTime)}${block.endTime ? ` → ${formatTime(block.endTime)}` : ' → running'}${durationMin ? `\n${formatDuration(durationMin)}` : ''}`}
               >
                 {/* Running pulse dot */}
@@ -186,9 +221,16 @@ export function DayView({ blocks, date, isToday, onEditBlock, onAddAtTime }: Pro
                   <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-accent ring-pulse flex-shrink-0" />
                 )}
 
-                <p className="text-xs font-semibold text-text-primary leading-tight truncate pr-3">
-                  {block.title}
-                </p>
+                <div className="flex items-center gap-1 min-w-0 pr-3">
+                  <p className="text-xs font-semibold text-text-primary leading-tight truncate flex-1 min-w-0">
+                    {block.title}
+                  </p>
+                  {workOrder && (
+                    <span className="text-xs text-text-muted shrink-0 truncate max-w-[40%]">
+                      {workOrder.code}
+                    </span>
+                  )}
+                </div>
 
                 {height >= 44 && (
                   <p className="text-xs text-text-muted mt-0.5 leading-tight">
