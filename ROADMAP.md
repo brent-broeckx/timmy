@@ -73,38 +73,38 @@ You can start your day, capture tasks as you work via the shortcut, review the t
 ## Phase 2 — Polish & Glass UI
 *Goal: Make it feel like a real, premium product.*
 
-- [ ] **Glassmorphism overlay**
+- [x] **Glassmorphism overlay**
   - Frosted glass effect on the overlay panel and quick-capture bar
   - Configurable transparency intensity
   - Dark and light base theme
 
-- [ ] **Anchor widget — full implementation**
+- [x] **Anchor widget — full implementation**
   - Pulsing dot when task is running
   - Configurable display modes: full / dot-only / hidden
   - Corner positioning (user-configurable: TL, TR, BL, BR)
   - Smart open direction (opens toward center away from chosen corner)
   - Option to hide anchor entirely (tray-only mode)
 
-- [ ] **Overlay panel animations**
+- [x] **Overlay panel animations**
   - Smooth expand/collapse from anchor
   - Subtle transitions on block interactions
 
-- [ ] **Quick-capture bar — autocomplete**
+- [x] **Quick-capture bar — autocomplete**
   - Recent tasks stored and surfaced as ghost-text inline suggestions
   - `/reuse <name>` command with autocomplete
   - Fuzzy "Did you mean X? → Tab" suggestion below input bar
   - Tab accepts suggestion (visible label)
 
-- [ ] **Slash command system (foundation)**
+- [x] **Slash command system (foundation)**
   - `/reuse` — prefill from recent task
   - `/stop` — stop current task
   - `/note <text>` — attach note to running task
   - Extensible command registry for future additions
 
-- [ ] **Soft delete with undo toast**
+- [x] **Soft delete with undo toast**
   - Deleted blocks show brief "Undo" notification before permanent removal
 
-- [ ] **Timeline overlapping block support**
+- [x] **Timeline overlapping block support**
   - Side-by-side rendering for overlapping time blocks
   - Visual indicator for full overlaps
 
@@ -145,48 +145,7 @@ Calendar events populate automatically every morning. The timeline for any consu
 
 ---
 
-## Phase 4 — Developer Connectors
-*Goal: Git and ticket activity enrich the timeline for developers.*
-
-- [ ] **Git connector**
-  - Parse local git log for configured repositories
-  - Commits appear as lightweight anchor markers on the timeline (not full blocks)
-  - Marker shows: timestamp, repo name, commit message (truncated)
-  - User can expand a commit marker into a full time block
-
-- [ ] **GitHub REST API connector** (optional, for remote repos)
-  - PR opens, reviews, merges surfaced as markers
-  - Read-only, personal access token auth stored in Credential Manager
-
-- [ ] **Azure DevOps connector**
-  - Commits and PR activity from configured ADO organization
-  - Work item status changes surfaced as markers
-
-- [ ] **Jira connector**
-  - Ticket transitions (e.g. In Progress → Done) surfaced as markers
-  - Comment activity as secondary markers
-  - API token auth stored locally
-
-- [ ] **Azure Boards connector**
-  - Work item updates and transitions as markers
-  - PAT auth stored locally
-
-- [ ] **Connector settings UI**
-  - Per-connector enable/disable toggle
-  - Credential entry and test connection
-  - Repo / project / board configuration per connector
-
-- [ ] **Marker → block expansion**
-  - Click a marker → expand into a time block
-  - Block inherits metadata from the marker (title, timestamp)
-  - Duration defaults to time until next anchor, adjustable
-
-### Exit Criteria
-Developers see their commits and ticket activity on the timeline without doing anything extra. The gap between real work and registered time shrinks significantly.
-
----
-
-## Phase 5 — AI Work Order Routing
+## Phase 4 — AI Work Order Routing
 *Goal: Activities are automatically mapped to the right work order.*
 
 - [ ] **AI routing engine**
@@ -213,7 +172,7 @@ Most activities are routed to the correct work order without user intervention. 
 
 ---
 
-## Phase 6 — Playwright Auto-Submit
+## Phase 5 — Playwright Auto-Submit
 *Goal: End-of-day submission is one button.*
 
 - [ ] **Setup wizard**
@@ -243,7 +202,7 @@ End-of-day time registration takes under two minutes including review. The tool 
 
 ---
 
-## Phase 7 — Multi-User & Distribution
+## Phase 6 — Multi-User & Distribution
 *Goal: Roll out to colleagues.*
 
 - [ ] **Installer (Windows)**
