@@ -1,18 +1,19 @@
 import {
-  app,
-  shell,
-  BrowserWindow,
-  ipcMain,
-  Tray,
-  nativeImage,
-  globalShortcut,
-  screen,
+    app,
+    shell,
+    BrowserWindow,
+    ipcMain,
+    Tray,
+    nativeImage,
+    globalShortcut,
+    screen,
 } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { autoUpdater } from 'electron-updater'
 import { initDb, closeDb, getDb } from './storage/db'
 import { registerStorageHandlers } from './ipc/storage'
+import { registerCalendarHandlers, startCalendarRefreshTimer } from './ipc/calendar'
 import { setOverlayWindow, setQuickCaptureWindow, setAnchorWindow } from './windows'
 import { IPC, DEFAULT_APP_CONFIG } from '@shared/types'
 import type { AppConfig } from '@shared/types'
@@ -313,7 +314,9 @@ app.whenReady().then(() => {
 
   initDb()
   registerStorageHandlers()
+  registerCalendarHandlers()
   registerWindowHandlers()
+  startCalendarRefreshTimer(() => overlayWindow)
 
   createOverlayWindow()
   createQuickCaptureWindow()

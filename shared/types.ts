@@ -38,9 +38,17 @@ export const IPC = {
   WINDOW_MINIMIZE_OVERLAY: 'window:minimizeOverlay',
   WINDOW_HIDE_ANCHOR: 'window:hideAnchor',
   WINDOW_REPOSITION_ANCHOR: 'window:repositionAnchor',
+  // Calendar connector
+  CALENDAR_GET_STATUS: 'calendar:getStatus',
+  CALENDAR_CONNECT: 'calendar:connect',
+  CALENDAR_DISCONNECT: 'calendar:disconnect',
+  CALENDAR_FETCH_EVENTS: 'calendar:fetchEvents',
+  CALENDAR_GET_EVENTS: 'calendar:getEvents',
+  CALENDAR_PULL_EVENT: 'calendar:pullEvent',
   // Push notifications (main → renderer, no response)
   STATE_TASK_CHANGED: 'state:taskChanged',
   STATE_OVERLAY_VISIBILITY: 'state:overlayVisibility',
+  STATE_CALENDAR_UPDATED: 'state:calendarUpdated',
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
@@ -96,6 +104,24 @@ export type ConnectorConfig = {
   type: 'graph-calendar' | 'git' | 'github' | 'jira' | 'ado'
   enabled: boolean
   config: Record<string, string>
+}
+
+export type CalendarEvent = {
+  id: string
+  date: string
+  startTime: string | null   // null = all-day event
+  endTime: string | null
+  title: string
+  organizer: string | null
+  isAllDay: boolean
+  sourceId: string           // Graph event ID
+  importedToTimeline: boolean
+}
+
+export type CalendarConnectorStatus = {
+  connected: boolean
+  email: string | null
+  lastFetchedAt: string | null
 }
 
 export type SubmitFieldMap = {

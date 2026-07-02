@@ -121,6 +121,32 @@ const MIGRATIONS: { filename: string; sql: string }[] = [
       );
     `,
   },
+  {
+    filename: '002_calendar.sql',
+    sql: `
+      CREATE TABLE IF NOT EXISTS calendar_events (
+        id                   TEXT    PRIMARY KEY,
+        date                 TEXT    NOT NULL,
+        start_time           TEXT,
+        end_time             TEXT,
+        title                TEXT    NOT NULL,
+        organizer            TEXT,
+        is_all_day           INTEGER NOT NULL DEFAULT 0,
+        source_id            TEXT    NOT NULL,
+        imported_to_timeline INTEGER NOT NULL DEFAULT 0,
+        created_at           TEXT    NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(date);
+
+      CREATE TABLE IF NOT EXISTS connector_tokens (
+        connector     TEXT PRIMARY KEY,
+        token_data    TEXT NOT NULL,
+        account_email TEXT,
+        updated_at    TEXT NOT NULL
+      );
+    `,
+  },
 ]
 
 function runMigrations(db: Database.Database): void {

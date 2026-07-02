@@ -5,11 +5,12 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useTimelineStore } from '../../store/useTimelineStore'
 import { useTaskStore } from '../../store/useTaskStore'
+import { ipc } from '../../ipc'
 import { DayView } from './DayView'
 import { MonthView } from './MonthView'
 import { BlockModal } from './BlockModal'
 import { SoftDeleteToast } from './SoftDeleteToast'
-import type { TimeBlock } from '@shared/types'
+import type { TimeBlock, CalendarEvent } from '@shared/types'
 
 type View = 'day' | 'month'
 
@@ -54,6 +55,11 @@ export function Timeline(): React.JSX.Element {
   // Soft-delete toast
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null)
 
+  // Calendar events for the current day view
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
+
+  const dateRef = useRef(date)
+
   const blocks = useTimelineStore((s) => s.blocks)
   const isLoading = useTimelineStore((s) => s.isLoading)
   const loadDay = useTimelineStore((s) => s.loadDay)
@@ -69,6 +75,29 @@ export function Timeline(): React.JSX.Element {
   useEffect(() => { undoRef.current = undo }, [undo])
   useEffect(() => { currentTaskRef.current = currentTask }, [currentTask])
   useEffect(() => { clearRef.current = clearCurrentTask }, [clearCurrentTask])
+  useEffect(() => { dateRef.current = date }, [date])
+
+  // ── Calendar events loading ────────────────────────────────────────────────
+
+  const loadCalendarEvents = useCallback((d: string): void => {
+    ipc.calendar.getEvents(d).then(setCalendarEvents).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (view === 'day') loadCalendarEvents(date)
+  }, [date, view, loadCalendarEvents])
+
+  // React to periodic calendar refresh pushed from main process
+  useEffect(() => {
+    const handleCalendarUpdated = (updatedDate: string): void => {
+      if (updatedDate === dateRef.current && view === 'day') {
+        loadCalendarEvents(updatedDate)
+        loadDay(updatedDate) // blocks may have new calendar imports
+      }
+    }
+    ipc.onCalendarUpdated(handleCalendarUpdated)
+    return () => ipc.offCalendarUpdated(handleCalendarUpdated)
+  }, [loadCalendarEvents, loadDay, view])
 
   // ── Navigation ────────────────────────────────────────────────────────────
 
@@ -76,7 +105,8 @@ export function Timeline(): React.JSX.Element {
     setDate(d)
     setView('day')
     loadDay(d)
-  }, [loadDay])
+    loadCalendarEvents(d)
+  }, [loadDay, loadCalendarEvents])
 
   const handlePrev = (): void => {
     if (view === 'day') {
@@ -211,9 +241,14 @@ export function Timeline(): React.JSX.Element {
           blocks={blocks}
           date={date}
           isToday={isToday}
+          calendarEvents={calendarEvents}
           onEditBlock={openEditBlock}
           onAddAtTime={(t) => openNewBlock(t, date)}
           onDeleteBlock={handleDelete}
+          onCalendarEventsChanged={() => {
+            loadCalendarEvents(date)
+            loadDay(date)
+          }}
         />
       ) : (
         <MonthView

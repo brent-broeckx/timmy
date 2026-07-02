@@ -9,9 +9,12 @@ import { AnchorWidget } from '../Anchor/AnchorWidget'
 import { Timeline } from '../Timeline/Timeline'
 import { WorkOrderSettings } from '../Settings/WorkOrderSettings'
 import { AppearanceSettings } from '../Settings/AppearanceSettings'
+import { CalendarSettings } from '../Settings/CalendarSettings'
 import type { TimeBlock } from '@shared/types'
 
-type View = 'timeline' | 'settings' | 'appearance'
+type View = 'timeline' | 'settings' | 'appearance' | 'calendar'
+
+const CALENDAR_ENABLED = import.meta.env.VITE_CALENDAR_ENABLED === 'true'
 
 export function OverlayPanel(): React.JSX.Element {
   const [view, setView] = useState<View>('timeline')
@@ -52,7 +55,15 @@ export function OverlayPanel(): React.JSX.Element {
     }
   }, [])
 
-  const handleStartDay = (): void => { startDay(todayRef.current) }
+  const handleStartDay = async (): Promise<void> => {
+    await startDay(todayRef.current)
+    // Auto-fetch calendar events when starting the day
+    try {
+      await ipc.calendar.fetchEvents(todayRef.current)
+    } catch {
+      // Calendar may not be connected — that's fine, silently ignore
+    }
+  }
   const handleEndDay = (): void => { endDay(todayRef.current) }
   const handleContinueDay = (): void => { continueDay(todayRef.current) }
 
@@ -122,7 +133,7 @@ export function OverlayPanel(): React.JSX.Element {
           {dayBoundary?.endTime ? ` → ${new Date(dayBoundary.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
         </span>
         {!dayBoundary ? (
-          <button onClick={handleStartDay} className="text-xs px-3 py-1 rounded bg-accent text-white hover:bg-accent-hover transition-colors">
+          <button onClick={handleStartDay} className="text-xs px-3 py-1 rounded bg-accent text-white hover:bg-accent/90 transition-colors">
             Start Day
           </button>
         ) : !dayBoundary.endTime ? (
@@ -137,9 +148,19 @@ export function OverlayPanel(): React.JSX.Element {
             </button>
           </div>
         )}
+        {CALENDAR_ENABLED && (
+          <button
+            onClick={() => setView(view === 'calendar' ? 'timeline' : 'calendar')}
+            className={['text-text-muted hover:text-text-primary transition-colors text-sm px-1', view === 'calendar' ? 'text-accent' : ''].join(' ')}
+            aria-label="Calendar settings"
+            title="Calendar"
+          >
+            📅
+          </button>
+        )}
         <button
           onClick={() => setView(view === 'appearance' ? 'timeline' : 'appearance')}
-          className="text-text-muted hover:text-text-primary transition-colors text-sm px-1"
+          className={['text-text-muted hover:text-text-primary transition-colors text-sm px-1', view === 'appearance' ? 'text-accent' : ''].join(' ')}
           aria-label="Appearance settings"
           title="Appearance"
         >
@@ -152,6 +173,7 @@ export function OverlayPanel(): React.JSX.Element {
         {view === 'timeline' && <Timeline />}
         {view === 'settings' && <WorkOrderSettings />}
         {view === 'appearance' && <AppearanceSettings />}
+        {view === 'calendar' && CALENDAR_ENABLED && <CalendarSettings />}
       </div>
 
       {/* Footer hint */}

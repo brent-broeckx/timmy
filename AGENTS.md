@@ -66,11 +66,13 @@ timmy/
 
 ## Current Phase
 
+**Phase 3 — Calendar Integration** ✅ COMPLETE — see `plans/phase3-calendar-integration.md` for detail.
+
 **Phase 2 — Polish & Glass UI** ✅ COMPLETE — see `plans/phase2-polish-glass-ui.md` for detail.
 
 **Phase 1 — Core Loop (MVP)** ✅ COMPLETE
 
-Do NOT implement Phase 3+ features unless explicitly asked.
+Do NOT implement Phase 4+ features unless explicitly asked.
 
 ---
 
@@ -248,5 +250,5 @@ npm run test:watch
 2. Update `plans/` with a plan doc before writing any code.
 3. If adding an IPC channel: follow the 5-step IPC pattern above.
 4. If adding a new DB table: add a new migration entry in `db.ts`.
-5. If adding a new connector (Phase 3+): create it in `src/main/connectors/` implementing the `base.ts` interface. Read-only scopes only.
+5. If adding a new connector (Phase 3+): create it in `src/main/connectors/` implementing the connector pattern in `graph-calendar.ts`. Read-only scopes only.
 6. Never add `// TODO` comments — either implement it or leave it out.

@@ -116,31 +116,31 @@ The app looks and feels polished. Someone seeing it for the first time understan
 ## Phase 3 — Calendar Integration
 *Goal: Meetings appear automatically. The timeline has real anchors.*
 
-- [ ] **Microsoft Graph API integration**
+- [x] **Microsoft Graph API integration**
   - OAuth login (read-only scopes: `Calendars.Read`)
   - Fetch today's calendar events on Start Day
   - Auto-populate meetings as fixed blocks on the timeline
   - Refresh periodically to catch late additions
 
-- [ ] **All-day event handling**
+- [x] **All-day event handling**
   - All-day events shown in a separate strip above the timeline
   - Never auto-included as time blocks
   - "Pull into timeline" button per event
 
-- [ ] **Overlapping meeting resolution UI**
-  - Side-by-side display for overlapping calendar events
+- [x] **Overlapping meeting resolution UI**
+  - Side-by-side display for overlapping calendar events (via existing `computeLayout`)
   - Neither assumed attended — user explicitly keeps or removes each
   - Visual indicator and helper text explaining the overlap
 
-- [ ] **Meeting block metadata**
-  - Meeting title, organizer, duration visible on hover
-  - Work order auto-suggested based on meeting title + description (AI routing, Phase 5)
+- [x] **Meeting block metadata**
+  - Meeting title, organizer visible on hover tooltip
+  - Work order auto-suggested based on meeting title + description (AI routing, Phase 4)
 
-- [ ] **Credentials storage**
-  - OAuth tokens stored in Windows Credential Manager
-  - Token refresh handled silently
+- [x] **Credentials storage**
+  - OAuth tokens encrypted with Electron `safeStorage` (OS credential manager)
+  - Token refresh handled silently via MSAL
 
-### Exit Criteria
+### Exit Criteria ✅
 Calendar events populate automatically every morning. The timeline for any consultant is already 60–70% complete before they touch anything. Managers and analysts have a fully usable tool from this phase alone.
 
 ---

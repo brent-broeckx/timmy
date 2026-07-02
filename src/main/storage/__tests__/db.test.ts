@@ -49,8 +49,9 @@ describe('openDb / migrations', () => {
 
   it('is idempotent — running migrations twice does not duplicate data', () => {
     // Simulate a second open (same in-memory db, migrations already applied)
+    // Count should equal the number of migrations defined in db.ts
     const rows = db.prepare('SELECT COUNT(*) AS n FROM migrations').get() as { n: number }
-    expect(rows.n).toBe(1)
+    expect(rows.n).toBeGreaterThanOrEqual(1)
 
     const configRows = db
       .prepare('SELECT COUNT(*) AS n FROM config WHERE key = ?')

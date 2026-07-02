@@ -6,7 +6,8 @@
 import { useMemo, useRef, useEffect, useState } from 'react'
 import { computeLayout } from './layout'
 import { useConfigStore } from '../../store/useConfigStore'
-import type { TimeBlock } from '@shared/types'
+import { ipc } from '../../ipc'
+import type { TimeBlock, CalendarEvent } from '@shared/types'
 
 type ContextMenu = { x: number; y: number; block: TimeBlock } | null
 
@@ -41,12 +42,14 @@ interface Props {
   blocks: TimeBlock[]
   date: string           // YYYY-MM-DD
   isToday: boolean
+  calendarEvents: CalendarEvent[]
   onEditBlock: (block: TimeBlock) => void
   onAddAtTime: (isoTime: string) => void
   onDeleteBlock: (id: string, title: string) => void
+  onCalendarEventsChanged: () => void
 }
 
-export function DayView({ blocks, date, isToday, onEditBlock, onAddAtTime, onDeleteBlock }: Props): React.JSX.Element {
+export function DayView({ blocks, date, isToday, calendarEvents, onEditBlock, onAddAtTime, onDeleteBlock, onCalendarEventsChanged }: Props): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const projects = useConfigStore((s) => s.projects)
 
@@ -104,11 +107,60 @@ export function DayView({ blocks, date, isToday, onEditBlock, onAddAtTime, onDel
     return Math.max(currentNowY - top, MIN_BLOCK_HEIGHT)
   }
 
-  return (
-    <div ref={containerRef} className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
-      <div style={{ height: totalHeight, position: 'relative', display: 'flex' }}>
+  const [pullingEventId, setPullingEventId] = useState<string | null>(null)
 
-        {/* ── Time labels (left column) ── */}
+  async function handlePullEvent(eventId: string): Promise<void> {
+    setPullingEventId(eventId)
+    try {
+      await ipc.calendar.pullEvent(eventId)
+      onCalendarEventsChanged()
+    } catch (err) {
+      console.error('[DayView] pullEvent failed:', err)
+    } finally {
+      setPullingEventId(null)
+    }
+  }
+
+  const allDayEvents = calendarEvents.filter((e) => e.isAllDay)
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+
+      {/* ── All-day events strip (non-scrolling) ── */}
+      {allDayEvents.length > 0 && (
+        <div className="flex-shrink-0 border-b border-white/10 px-4 py-2 space-y-1">
+          <p className="text-xs text-text-muted mb-1">All-day</p>
+          {allDayEvents.map((event) => (
+            <div
+              key={event.id}
+              className="flex items-center justify-between gap-2 rounded-lg bg-accent/5 border border-accent/15 px-3 py-1.5"
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-text-primary truncate">{event.title}</p>
+                {event.organizer && (
+                  <p className="text-xs text-text-muted truncate">{event.organizer}</p>
+                )}
+              </div>
+              {!event.importedToTimeline ? (
+                <button
+                  onClick={() => handlePullEvent(event.id)}
+                  disabled={pullingEventId === event.id}
+                  title="Pull into timeline as a block"
+                  className="flex-shrink-0 text-xs px-2 py-0.5 rounded border border-accent/30 text-accent hover:bg-accent/10 disabled:opacity-50 transition-colors whitespace-nowrap"
+                >
+                  {pullingEventId === event.id ? '…' : '→ Timeline'}
+                </button>
+              ) : (
+                <span className="flex-shrink-0 text-xs text-text-muted">Added</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Scrollable time grid ── */}
+      <div ref={containerRef} className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
+      <div style={{ height: totalHeight, position: 'relative', display: 'flex' }}>
         <div className="flex-shrink-0 relative select-none" style={{ width: 52 }}>
           {Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => (
             <div
@@ -253,6 +305,7 @@ export function DayView({ blocks, date, isToday, onEditBlock, onAddAtTime, onDel
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   )

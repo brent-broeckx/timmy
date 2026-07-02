@@ -3,7 +3,7 @@
 // All other renderer code imports from here — never calls window.timmy directly.
 
 import { IPC } from '@shared/types'
-import type { TimeBlock, DayBoundary, Project, WorkOrder, AppConfig, IpcResponse } from '@shared/types'
+import type { TimeBlock, DayBoundary, Project, WorkOrder, AppConfig, CalendarEvent, CalendarConnectorStatus, IpcResponse } from '@shared/types'
 
 async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
   const response = await window.timmy.invoke<T>(channel, ...args)
@@ -70,6 +70,14 @@ export const ipc = {
     update: (wo: WorkOrder) => invoke<void>(IPC.WORKORDER_UPDATE, wo),
     delete: (id: string) => invoke<void>(IPC.WORKORDER_DELETE, id),
   },
+  calendar: {
+    getStatus: () => invoke<CalendarConnectorStatus>(IPC.CALENDAR_GET_STATUS),
+    connect: () => invoke<CalendarConnectorStatus>(IPC.CALENDAR_CONNECT),
+    disconnect: () => invoke<void>(IPC.CALENDAR_DISCONNECT),
+    fetchEvents: (date: string) => invoke<{ imported: number; allDay: number; found: number }>(IPC.CALENDAR_FETCH_EVENTS, date),
+    getEvents: (date: string) => invoke<CalendarEvent[]>(IPC.CALENDAR_GET_EVENTS, date),
+    pullEvent: (eventId: string) => invoke<void>(IPC.CALENDAR_PULL_EVENT, eventId),
+  },
   window: {
     hideQuickCapture: () => window.timmy.send(IPC.WINDOW_HIDE_QUICK_CAPTURE),
     showQuickCapture: () => window.timmy.send(IPC.WINDOW_SHOW_QUICK_CAPTURE),
@@ -92,6 +100,13 @@ export const ipc = {
   },
   offOverlayVisibility: (cb: (visible: boolean) => void): void => {
     unregisterPush(cb, IPC.STATE_OVERLAY_VISIBILITY)
+  },
+  // Push: calendar updated (date string)
+  onCalendarUpdated: (cb: (date: string) => void): void => {
+    registerPush(cb, IPC.STATE_CALENDAR_UPDATED)
+  },
+  offCalendarUpdated: (cb: (date: string) => void): void => {
+    unregisterPush(cb, IPC.STATE_CALENDAR_UPDATED)
   },
 }
 
