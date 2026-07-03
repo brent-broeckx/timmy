@@ -81,17 +81,21 @@ export function AnchorRoot(): React.JSX.Element {
 
   return (
     <div
-      className="w-full h-full flex items-center gap-2 px-3 cursor-pointer select-none rounded-xl glass-panel border border-white/10"
+      className="w-full h-full flex items-center gap-2 px-3 cursor-pointer select-none rounded-xl glass-panel"
+      style={{
+        border: '1px solid rgba(14, 165, 233, 0.18)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 24px rgba(0,0,0,0.4)',
+      }}
       onClick={handleOpen}
       onMouseEnter={handleMouseEnter}
     >
       <span
         className={[
           'w-2 h-2 rounded-full flex-shrink-0',
-          runningBlock ? 'bg-accent ring-pulse' : 'bg-text-muted',
+          runningBlock ? 'bg-accent ring-pulse' : 'bg-border',
         ].join(' ')}
       />
-      <span className="text-xs text-text-primary truncate flex-1 min-w-0" title={runningBlock?.title}>
+      <span className="text-xs font-medium text-text-primary truncate flex-1 min-w-0" title={runningBlock?.title}>
         {runningBlock ? runningBlock.title : 'No task running'}
       </span>
       {runningBlock && (

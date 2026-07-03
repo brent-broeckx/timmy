@@ -4,7 +4,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTimelineStore } from '../../store/useTimelineStore'
 import { useTaskStore } from '../../store/useTaskStore'
+import { useConfigStore } from '../../store/useConfigStore'
 import { formatElapsed } from '@shared/types'
+import { Settings2 } from 'lucide-react'
 
 type Props = {
   onOpenSettings: () => void
@@ -14,6 +16,8 @@ export function AnchorWidget({ onOpenSettings }: Props): React.JSX.Element {
   // Derive running task directly from the timeline store — works across both windows
   const runningBlock = useTimelineStore((s) => s.blocks.find((b) => b.endTime === null) ?? null)
   const stopTask = useTaskStore((s) => s.stopTask)
+  const glassIntensity = useConfigStore((s) => s.config.glassIntensity)
+  const bgOpacity = 1 - (glassIntensity / 100) * 0.8
   const [elapsed, setElapsed] = useState(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -40,47 +44,49 @@ export function AnchorWidget({ onOpenSettings }: Props): React.JSX.Element {
   }
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2 bg-surface border-b border-border select-none">
-      {/* Running indicator */}
-      <div className="flex items-center gap-2 flex-1 min-w-0">
+    <div
+      className="flex items-center gap-3 px-4 py-2.5 border-b border-border select-none relative overflow-hidden"
+      style={{ background: `rgba(17, 20, 24, ${bgOpacity.toFixed(2)})` }}
+    >
+      {/* Accent glow when running */}
+      {runningBlock && <div className="absolute inset-y-0 left-0 w-16 bg-accent/8 blur-lg pointer-events-none" />}
+
+      <div className="flex items-center gap-2.5 flex-1 min-w-0 z-10">
         {runningBlock ? (
           <>
             <span className="w-2 h-2 rounded-full bg-accent ring-pulse flex-shrink-0" />
-            <span className="text-sm text-text-primary truncate max-w-[200px]" title={runningBlock.title}>
+            <span className="text-sm font-medium text-text-primary truncate" title={runningBlock.title}>
               {runningBlock.title}
             </span>
-            <span className="text-sm text-text-muted font-mono tabular-nums flex-shrink-0">
+            <span className="text-xs text-text-muted font-mono tabular-nums flex-shrink-0 bg-surface-elevated px-1.5 py-0.5 rounded border border-border">
               {formatElapsed(elapsed)}
             </span>
           </>
         ) : (
           <>
-            <span className="w-2 h-2 rounded-full bg-text-muted flex-shrink-0" />
-            <span className="text-sm text-text-muted">No task running</span>
+            <span className="w-2 h-2 rounded-full bg-border flex-shrink-0" />
+            <span className="text-xs text-text-muted">No task running</span>
           </>
         )}
       </div>
 
-      {/* Stop button */}
       {runningBlock && (
         <button
           onClick={handleStop}
-          className="w-6 h-6 flex items-center justify-center rounded bg-red-600 hover:bg-red-500 text-white text-xs flex-shrink-0 transition-colors"
+          className="w-6 h-6 flex items-center justify-center rounded-md bg-red-500/15 border border-red-500/30 hover:bg-red-500 transition-all z-10 group flex-shrink-0"
           aria-label="Stop task"
-          title="Stop task"
         >
-          ■
+          <span className="w-2 h-2 bg-red-400 group-hover:bg-white rounded-[2px] transition-colors" />
         </button>
       )}
 
-      {/* Settings shortcut */}
       <button
         onClick={onOpenSettings}
-        className="text-text-muted hover:text-text-primary transition-colors text-base leading-none px-1"
+        className="w-6 h-6 flex items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-elevated transition-colors z-10 flex-shrink-0 border border-transparent hover:border-border"
         aria-label="Open settings"
         title="Settings"
       >
-        ⚙
+        <Settings2 size={13} strokeWidth={1.75} />
       </button>
     </div>
   )

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: transparent;
+      overflow: hidden;
+      font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    .panel {
+      width: 100%; height: 100%;
+      background: #0d1117;
+      border: 1px solid rgba(14, 165, 233, 0.14);
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Ambient glow */
+    .panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 70% 55% at 50% 25%, rgba(14, 165, 233, 0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* Subtle grid pattern */
+    .panel::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    /* Logo section */
+    .logo-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      position: relative;
+      z-index: 1;
+      opacity: 0;
+      transform: translateY(10px);
+      animation: rise 500ms cubic-bezier(0.16, 1, 0.3, 1) 80ms forwards;
+    }
+
+    @keyframes rise {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Logo mark SVG animations */
+    .logo-ring {
+      stroke-dasharray: 145;
+      stroke-dashoffset: 145;
+      animation: draw-ring 900ms cubic-bezier(0.4, 0, 0.2, 1) 200ms forwards;
+    }
+
+    @keyframes draw-ring {
+      to { stroke-dashoffset: 0; }
+    }
+
+    .logo-hands {
+      opacity: 0;
+      transform-origin: 24px 24px;
+      transform: scale(0.5);
+      animation: pop-in 350ms cubic-bezier(0.34, 1.56, 0.64, 1) 800ms forwards;
+    }
+
+    @keyframes pop-in {
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* Wordmark */
+    .wordmark {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.4px;
+      color: #e2e8f0;
+      line-height: 1;
+    }
+
+    .wordmark .highlight {
+      color: #0ea5e9;
+    }
+
+    .tagline {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #334155;
+      font-weight: 500;
+      margin-top: 3px;
+      text-align: center;
+    }
+
+    /* Steps list */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      width: 188px;
+      position: relative;
+      z-index: 1;
+      opacity: 0;
+      animation: rise 350ms ease-out 700ms forwards;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 11.5px;
+      font-weight: 400;
+      color: #1e293b;
+      transition: color 250ms ease;
+    }
+
+    .step.active { color: #94a3b8; }
+    .step.done { color: #0ea5e9; }
+
+    .step-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #1e293b;
+      flex-shrink: 0;
+      transition: background 250ms ease, box-shadow 250ms ease;
+    }
+
+    .step.active .step-dot {
+      background: #0ea5e9;
+      box-shadow: 0 0 6px rgba(14, 165, 233, 0.7);
+      animation: blink 900ms ease-in-out infinite;
+    }
+
+    .step.done .step-dot {
+      background: #0ea5e9;
+      box-shadow: none;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
+    /* Bottom progress bar */
+    .progress-track {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: rgba(14, 165, 233, 0.08);
+      border-radius: 0 0 14px 14px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #0369a1, #0ea5e9, #38bdf8);
+      border-radius: 0 0 14px 14px;
+      transition: width 2600ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <!-- Logo mark -->
+    <div class="logo-section">
+      <svg width="56" height="56" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <!-- Outer ring with draw animation -->
+        <circle class="logo-ring" cx="24" cy="24" r="23" stroke="#0ea5e9" stroke-width="1.75" stroke-linecap="round"/>
+        <!-- Tick marks at 12, 3, 6, 9 -->
+        <g opacity="0.3">
+          <line x1="24" y1="3" x2="24" y2="7" stroke="#0ea5e9" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="45" y1="24" x2="41" y2="24" stroke="#0ea5e9" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="24" y1="45" x2="24" y2="41" stroke="#0ea5e9" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="3" y1="24" x2="7" y2="24" stroke="#0ea5e9" stroke-width="1.5" stroke-linecap="round"/>
+        </g>
+        <!-- Clock hands + center -->
+        <g class="logo-hands">
+          <!-- Hour hand pointing to 12 -->
+          <line x1="24" y1="24" x2="24" y2="9" stroke="#0ea5e9" stroke-width="2.25" stroke-linecap="round"/>
+          <!-- Minute hand pointing to ~2 -->
+          <line x1="24" y1="24" x2="35" y2="18" stroke="#94a3b8" stroke-width="1.75" stroke-linecap="round"/>
+          <!-- Center pivot -->
+          <circle cx="24" cy="24" r="2.5" fill="#0ea5e9"/>
+        </g>
+      </svg>
+
+      <div>
+        <div class="wordmark">ti<span class="highlight">mm</span>y</div>
+        <div class="tagline">Time &amp; Me</div>
+      </div>
+    </div>
+
+    <!-- Loading steps -->
+    <div class="steps" id="steps">
+      <div class="step" id="step-0">
+        <div class="step-dot"></div>
+        <span>Initializing database</span>
+      </div>
+      <div class="step" id="step-1">
+        <div class="step-dot"></div>
+        <span>Loading workspace</span>
+      </div>
+      <div class="step" id="step-2">
+        <div class="step-dot"></div>
+        <span>Starting services</span>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+  </div>
+
+  <script>
+    const steps = [
+      document.getElementById('step-0'),
+      document.getElementById('step-1'),
+      document.getElementById('step-2'),
+    ];
+    const fill = document.getElementById('progress-fill');
+
+    // Start progress bar fill
+    requestAnimationFrame(() => {
+      fill.style.width = '92%';
+    });
+
+    // Sequence steps
+    const delays = [450, 1100, 1750];
+    delays.forEach((delay, i) => {
+      setTimeout(() => {
+        if (i > 0) {
+          steps[i - 1].classList.remove('active');
+          steps[i - 1].classList.add('done');
+        }
+        steps[i].classList.add('active');
+      }, delay);
+    });
+
+    // Final state
+    setTimeout(() => {
+      steps[2].classList.remove('active');
+      steps[2].classList.add('done');
+      fill.style.width = '100%';
+    }, 2300);
+  </script>
+</body>
+</html>

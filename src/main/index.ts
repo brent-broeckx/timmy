@@ -21,6 +21,7 @@ import type { AppConfig } from '@shared/types'
 let overlayWindow: BrowserWindow | null = null
 let quickCaptureWindow: BrowserWindow | null = null
 let anchorWindow: BrowserWindow | null = null
+let splashWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let overlayMoved = false
 
@@ -101,7 +102,7 @@ function createOverlayWindow(): void {
       sandbox: false,
       contextIsolation: true
     },
-    resizable: false
+    resizable: true
   })
 
   setOverlayWindow(overlayWindow)
@@ -146,7 +147,7 @@ function createAnchorWindow(): void {
     frame: false,
     transparent: true,
     alwaysOnTop: true,
-    resizable: true,
+    resizable: false,
     skipTaskbar: true,
     focusable: false,
     webPreferences: {
@@ -168,13 +169,35 @@ function createAnchorWindow(): void {
   anchorWindow.on('ready-to-show', () => anchorWindow?.show())
 }
 
+function createSplashWindow(): void {
+  const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize
+  splashWindow = new BrowserWindow({
+    width: 440,
+    height: 288,
+    x: Math.round(sw / 2 - 220),
+    y: Math.round(sh / 2 - 144),
+    show: false,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    skipTaskbar: true,
+    webPreferences: {
+      sandbox: true,
+      contextIsolation: true,
+    },
+  })
+  splashWindow.loadFile(join(__dirname, '../../resources/splash.html'))
+  splashWindow.once('ready-to-show', () => splashWindow?.show())
+}
+
 function createQuickCaptureWindow(): void {
   const display = screen.getPrimaryDisplay()
   const { width, height } = display.workAreaSize
 
   quickCaptureWindow = new BrowserWindow({
     width: 640,
-    height: 260,
+    height: 400,
     x: Math.round(width / 2 - 320),
     y: Math.round(height * 0.35),
     show: false,
@@ -312,6 +335,9 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  const splashStart = Date.now()
+  createSplashWindow()
+
   initDb()
   registerStorageHandlers()
   registerCalendarHandlers()
@@ -326,6 +352,31 @@ app.whenReady().then(() => {
 
   if (!is.dev) {
     autoUpdater.checkForUpdatesAndNotify()
+  }
+
+  // Close splash: requires both minimum display time AND main window loaded
+  const MIN_DISPLAY_MS = 2700
+  let timerDone = false
+  let windowDone = false
+
+  const tryCloseSplash = (): void => {
+    if (!timerDone || !windowDone) return
+    splashWindow?.close()
+    splashWindow = null
+  }
+
+  setTimeout(() => {
+    timerDone = true
+    tryCloseSplash()
+  }, Math.max(400, MIN_DISPLAY_MS - (Date.now() - splashStart)))
+
+  if (overlayWindow) {
+    overlayWindow.once('ready-to-show', () => {
+      windowDone = true
+      tryCloseSplash()
+    })
+  } else {
+    windowDone = true
   }
 })
 

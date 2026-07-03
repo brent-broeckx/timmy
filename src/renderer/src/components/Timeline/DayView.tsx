@@ -128,12 +128,12 @@ export function DayView({ blocks, date, isToday, calendarEvents, onEditBlock, on
 
       {/* ── All-day events strip (non-scrolling) ── */}
       {allDayEvents.length > 0 && (
-        <div className="flex-shrink-0 border-b border-white/10 px-4 py-2 space-y-1">
-          <p className="text-xs text-text-muted mb-1">All-day</p>
+        <div className="flex-shrink-0 border-b border-border bg-surface-elevated/20 px-4 py-2 space-y-1">
+          <p className="text-xs text-text-muted mb-1 font-medium">All-day</p>
           {allDayEvents.map((event) => (
             <div
               key={event.id}
-              className="flex items-center justify-between gap-2 rounded-lg bg-accent/5 border border-accent/15 px-3 py-1.5"
+              className="flex items-center justify-between gap-2 rounded-xl bg-surface border border-border px-3 py-1.5 shadow-sm"
             >
               <div className="min-w-0">
                 <p className="text-xs font-medium text-text-primary truncate">{event.title}</p>
@@ -146,7 +146,7 @@ export function DayView({ blocks, date, isToday, calendarEvents, onEditBlock, on
                   onClick={() => handlePullEvent(event.id)}
                   disabled={pullingEventId === event.id}
                   title="Pull into timeline as a block"
-                  className="flex-shrink-0 text-xs px-2 py-0.5 rounded border border-accent/30 text-accent hover:bg-accent/10 disabled:opacity-50 transition-colors whitespace-nowrap"
+                  className="flex-shrink-0 text-xs px-3 py-1.5 rounded-lg border border-accent/50 bg-surface-elevated/30 text-accent hover:bg-surface-elevated/60 shadow-[0_0_10px_rgba(14,165,233,0.15)] disabled:opacity-50 transition-colors whitespace-nowrap"
                 >
                   {pullingEventId === event.id ? '…' : '→ Timeline'}
                 </button>
@@ -183,7 +183,7 @@ export function DayView({ blocks, date, isToday, calendarEvents, onEditBlock, on
           {Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => (
             <div
               key={i}
-              className="absolute left-0 right-0 border-t border-white/10"
+              className="absolute left-0 right-0 border-t border-border/40"
               style={{ top: i * HOUR_HEIGHT }}
             />
           ))}
@@ -191,7 +191,7 @@ export function DayView({ blocks, date, isToday, calendarEvents, onEditBlock, on
           {Array.from({ length: TOTAL_HOURS }, (_, i) => (
             <div
               key={`h${i}`}
-              className="absolute left-0 right-0 border-t border-white/[0.04]"
+              className="absolute left-0 right-0 border-t border-border/20"
               style={{ top: i * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
             />
           ))}
@@ -252,15 +252,15 @@ export function DayView({ blocks, date, isToday, calendarEvents, onEditBlock, on
                 key={block.id}
                 data-block="1"
                 className={[
-                  'absolute rounded-lg border overflow-hidden cursor-pointer transition-all group',
+                  'absolute rounded-xl border overflow-hidden cursor-pointer transition-all group shadow-sm',
                   needsWorkOrder
                     ? 'ring-1 ring-amber-300/30'
                     : '',
                   isRunning
-                    ? 'bg-accent/20 border-accent/50 hover:bg-accent/30 hover:border-accent/80'
+                    ? 'bg-surface-elevated/70 border-accent/60 hover:bg-surface-elevated hover:border-accent/80 shadow-[0_0_15px_rgba(14,165,233,0.15)]'
                     : needsWorkOrder
-                      ? 'bg-amber-400/8 border-amber-300/35 hover:bg-amber-400/12 hover:border-amber-200/50'
-                      : 'bg-surface border-border hover:border-accent/40 hover:bg-surface-elevated',
+                      ? 'bg-surface border-amber-300/50 hover:bg-surface-elevated hover:border-amber-300/70'
+                      : 'bg-surface-elevated border-border/60 hover:bg-surface-elevated/80 hover:border-border',
                 ].join(' ')}
                 style={{
                   top,

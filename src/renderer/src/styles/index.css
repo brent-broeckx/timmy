@@ -5,22 +5,22 @@
 
 /* ─── Design tokens ────────────────────────────────────────────────────────── */
 @theme {
-  /* Color palette */
-  --color-background:      #0f0f1a;
-  --color-surface:         #161625;
-  --color-surface-elevated: #1e1e30;
-  --color-border:          #2a2a40;
-  --color-border-hover:    #3a3a55;
-  --color-accent:          #6c63ff;
-  --color-accent-hover:    #7c73ff;
+  /* Dark zinc / electric blue palette */
+  --color-background:       #0a0c10;
+  --color-surface:          #111418;
+  --color-surface-elevated: #1c1f27;
+  --color-border:           #232730;
+  --color-border-hover:     #353c4a;
+  --color-accent:           #0ea5e9; /* sky-500 electric blue */
+  --color-accent-hover:     #38bdf8; /* sky-400 on hover */
 
   /* Text */
-  --color-text-primary:    #e8e8f0;
-  --color-text-muted:      #6e6e88;
+  --color-text-primary:    #e2e8f0;
+  --color-text-muted:      #64748b;
 
   /* Fonts */
-  --font-family-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  --font-family-mono: 'JetBrains Mono', 'Consolas', monospace;
+  --font-family-sans: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-family-mono: 'Cascadia Code', 'Cascadia Mono', 'Consolas', monospace;
 
   /* Animations */
   --animate-slide-from-tl: slide-from-tl 180ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -59,9 +59,9 @@
   to   { opacity: 0; transform: scale(0.97); max-height: 0; padding: 0; margin: 0; }
 }
 @keyframes ring-pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(108, 99, 255, 0.7); }
-  60%  { box-shadow: 0 0 0 6px rgba(108, 99, 255, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(108, 99, 255, 0); }
+  0%   { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.65); }
+  60%  { box-shadow: 0 0 0 6px rgba(14, 165, 233, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0); }
 }
 @keyframes toast-in {
   from { opacity: 0; transform: translateX(-50%) translateY(16px); }
@@ -95,9 +95,9 @@ body,
 
 /* ─── Glass panel utility ──────────────────────────────────────────────────── */
 .glass-panel {
-  background: rgba(15, 15, 26, 0.82);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(10, 12, 16, 0.80);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
 }
 
 /* ─── Ring-pulse dot ───────────────────────────────────────────────────────── */
@@ -117,13 +117,15 @@ body,
 
 /* ─── Light theme overrides ────────────────────────────────────────────────── */
 [data-theme="light"] {
-  --color-background:       #f4f4f8;
+  --color-background:       #f4f6f9;
   --color-surface:          #ffffff;
-  --color-surface-elevated: #eaeaf0;
-  --color-border:           #d0d0e0;
-  --color-border-hover:     #b0b0cc;
-  --color-text-primary:     #1a1a2e;
-  --color-text-muted:       #7070a0;
+  --color-surface-elevated: #eaecf0;
+  --color-border:           #d0d5dd;
+  --color-border-hover:     #9ba5b4;
+  --color-accent:           #0ea5e9;
+  --color-accent-hover:     #0284c7;
+  --color-text-primary:     #0f172a;
+  --color-text-muted:       #64748b;
 }
 
 /* Custom scrollbar */

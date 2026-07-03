@@ -139,39 +139,38 @@ export function BlockModal({ block, initialStartTime, initialDate, onClose, onDe
   return (
     // Backdrop
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.5)' }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       {/* Modal */}
       <div
-        className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-sm mx-4 flex flex-col"
+        className="bg-surface-elevated border border-border rounded-xl shadow-2xl w-full max-w-sm mx-4 flex flex-col"
         onKeyDown={handleKeyDown}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border">
-          <h2 className="text-sm font-semibold text-text-primary">
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border bg-surface/50 rounded-t-xl">
+          <h2 className="text-base font-semibold text-text-primary">
             {isNew ? 'Add block' : 'Edit block'}
           </h2>
           <button
             onClick={onClose}
-            className="w-6 h-6 flex items-center justify-center rounded text-text-muted hover:text-text-primary hover:bg-white/10 transition-colors text-lg leading-none"
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-elevated transition-colors text-xl leading-none"
           >
             ×
           </button>
         </div>
 
         {/* Body */}
-        <div className="px-4 py-3 space-y-3 overflow-y-auto">
+        <div className="px-5 py-4 space-y-4 overflow-y-auto">
           {/* Title */}
           <div>
-            <label className="text-xs text-text-muted block mb-1">Title</label>
+            <label className="text-xs font-medium text-text-muted block mb-1.5 uppercase tracking-wider">Title</label>
             <input
               ref={titleRef}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="What were you working on?"
-              className="w-full bg-surface-elevated border border-border rounded px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent transition-colors"
+              className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/70 transition-all shadow-sm"
             />
           </div>
 
@@ -260,11 +259,11 @@ export function BlockModal({ block, initialStartTime, initialDate, onClose, onDe
         </div>
 
         {/* Footer */}
-        <div className="flex items-center gap-2 px-4 pb-4 pt-3 border-t border-border">
+        <div className="flex items-center gap-3 px-5 pb-5 pt-4 border-t border-border bg-surface/50 rounded-b-xl">
           {!isNew && (
             <button
               onClick={() => { onDelete(block.id, block.title) }}
-              className="text-xs px-3 py-1.5 rounded border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-colors"
+              className="text-xs font-medium px-4 py-2 rounded-lg border border-red-500/60 text-red-400 hover:bg-red-500/15 hover:text-red-300 transition-colors"
             >
               Delete
             </button>
@@ -272,14 +271,14 @@ export function BlockModal({ block, initialStartTime, initialDate, onClose, onDe
           <div className="flex-1" />
           <button
             onClick={onClose}
-            className="text-xs px-3 py-1.5 rounded border border-border text-text-muted hover:text-text-primary hover:border-border-hover transition-colors"
+            className="text-xs font-medium px-4 py-2 rounded-lg border border-border text-text-muted hover:text-text-primary hover:bg-surface-elevated transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={() => void handleSave()}
             disabled={saving}
-            className="text-xs px-4 py-1.5 rounded bg-accent text-white hover:bg-accent-hover disabled:opacity-50 transition-colors"
+            className="text-xs font-medium px-5 py-2 rounded-lg bg-accent text-white hover:bg-accent-hover disabled:opacity-50 transition-colors shadow-lg shadow-accent/20"
           >
             {saving ? 'Saving…' : 'Save'}
           </button>

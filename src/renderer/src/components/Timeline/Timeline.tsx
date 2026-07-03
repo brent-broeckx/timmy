@@ -197,11 +197,11 @@ export function Timeline(): React.JSX.Element {
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
 
       {/* ── Toolbar ── */}
-      <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 border-b border-white/10">
+      <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 border-b border-border bg-surface-elevated/50 z-10 backdrop-blur-md">
         {/* Prev */}
         <button
           onClick={handlePrev}
-          className="w-6 h-6 flex items-center justify-center rounded text-lg leading-none text-text-muted hover:text-text-primary hover:bg-white/10 transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-lg leading-none text-text-muted hover:text-text-primary hover:bg-surface-elevated transition-colors"
           title="Previous"
         >‹</button>
 
@@ -209,7 +209,7 @@ export function Timeline(): React.JSX.Element {
         {!isToday && (
           <button
             onClick={handleToday}
-            className="text-xs px-2 py-0.5 rounded border border-border text-text-muted hover:text-text-primary hover:border-border-hover transition-colors"
+            className="text-xs px-3 py-1 rounded-lg border border-border text-text-muted hover:text-text-primary hover:bg-surface hover:border-border-hover transition-colors"
           >Today</button>
         )}
 
@@ -217,29 +217,29 @@ export function Timeline(): React.JSX.Element {
         <button
           onClick={handleNext}
           disabled={!canGoNext}
-          className="w-6 h-6 flex items-center justify-center rounded text-lg leading-none text-text-muted hover:text-text-primary hover:bg-white/10 disabled:opacity-30 transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-lg leading-none text-text-muted hover:text-text-primary hover:bg-surface-elevated disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
           title="Next"
         >›</button>
 
         {/* Date label */}
-        <span className="flex-1 text-xs text-text-muted text-center truncate select-none">{label}</span>
+        <span className="flex-1 text-sm font-medium text-text-primary text-center truncate select-none">{label}</span>
 
         {/* Add block */}
         <button
           onClick={() => openNewBlock(new Date().toISOString(), view === 'day' ? date : today)}
-          className="text-xs px-2 py-0.5 rounded bg-accent/20 text-accent border border-accent/30 hover:bg-accent/30 transition-colors"
+          className="text-xs px-3 py-1 rounded-lg bg-surface hover:bg-surface-elevated text-accent border border-accent/50 shadow-[0_0_10px_rgba(14,165,233,0.1)] hover:border-accent transition-colors"
           title="Add block manually"
         >+ Add</button>
 
         {/* View switcher */}
-        <div className="flex rounded-lg overflow-hidden border border-border text-xs">
+        <div className="flex bg-surface-elevated overflow-hidden rounded-[1rem] p-0.5 border border-border ml-2 gap-0.5">
           <button
             onClick={() => setView('day')}
-            className={`px-2 py-0.5 transition-colors ${view === 'day' ? 'bg-accent text-white' : 'text-text-muted hover:text-text-primary hover:bg-white/10'}`}
+            className={`px-3 py-1 text-xs rounded-md transition-all duration-200 ${view === 'day' ? 'bg-accent text-white shadow shadow-accent/20 font-medium' : 'text-text-muted hover:text-text-primary hover:bg-surface/50'}`}
           >Day</button>
           <button
             onClick={() => setView('month')}
-            className={`px-2 py-0.5 transition-colors ${view === 'month' ? 'bg-accent text-white' : 'text-text-muted hover:text-text-primary hover:bg-white/10'}`}
+            className={`px-3 py-1 text-xs rounded-md transition-all duration-200 ${view === 'month' ? 'bg-accent text-white shadow shadow-accent/20 font-medium' : 'text-text-muted hover:text-text-primary hover:bg-surface/50'}`}
           >Month</button>
         </div>
       </div>

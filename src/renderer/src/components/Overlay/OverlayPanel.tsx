@@ -2,11 +2,13 @@
 // Main application panel: running task header + Start/End Day + timeline + nav.
 
 import { useEffect, useState, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useTimelineStore } from '../../store/useTimelineStore'
 import { useConfigStore } from '../../store/useConfigStore'
 import { ipc } from '../../ipc'
 import { AnchorWidget } from '../Anchor/AnchorWidget'
 import { Timeline } from '../Timeline/Timeline'
+import { SideNav } from './SideNav'
 import { WorkOrderSettings } from '../Settings/WorkOrderSettings'
 import { AppearanceSettings } from '../Settings/AppearanceSettings'
 import { CalendarSettings } from '../Settings/CalendarSettings'
@@ -93,36 +95,48 @@ export function OverlayPanel(): React.JSX.Element {
         slideClass[anchorPosition] ?? '',
       ].join(' ')}
       style={{
-        background: `rgba(15, 15, 26, ${bgOpacity.toFixed(2)})`,
-        backdropFilter: 'blur(20px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        background: `rgba(10, 12, 16, ${bgOpacity.toFixed(2)})`,
+        backdropFilter: 'blur(20px) saturate(160%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+        border: '1px solid rgba(255,255,255,0.07)',
       } as React.CSSProperties}
     >
-      {/* Title bar / drag region with window controls */}
+      {/* Title bar with Timmy logo and macOS-style traffic lights */}
       <div
-        className="flex-shrink-0 h-10 bg-white/5 flex items-center px-3 gap-2"
-        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+        className="flex-shrink-0 h-[42px] flex items-center px-4 gap-2.5"
+        style={{
+          WebkitAppRegion: 'drag',
+          background: 'rgba(17, 20, 24, 0.9)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+        } as React.CSSProperties}
       >
-        <span className="text-xs text-text-muted select-none flex-1">
-          Timmy
+        {/* Timmy clock mark */}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }} aria-hidden="true">
+          <circle cx="12" cy="12" r="10.5" stroke="#0ea5e9" strokeWidth="1.5"/>
+          <line x1="12" y1="12" x2="12" y2="5" stroke="#0ea5e9" strokeWidth="1.75" strokeLinecap="round"/>
+          <line x1="12" y1="12" x2="17" y2="9" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/>
+          <circle cx="12" cy="12" r="1.5" fill="#0ea5e9"/>
+        </svg>
+        <span
+          className="text-[13px] font-semibold select-none flex-1"
+          style={{ color: '#e2e8f0', letterSpacing: '-0.2px' }}
+        >
+          timmy
         </span>
-        {/* Window controls (no-drag so they're clickable) */}
+        {/* Window controls */}
         <div
-          className="flex items-center gap-1"
+          className="flex items-center gap-1.5"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
           <button
             onClick={() => ipc.window.minimizeOverlay()}
-            className="w-3 h-3 rounded-full bg-yellow-400 hover:bg-yellow-300 transition-colors flex-shrink-0"
+            className="w-3 h-3 rounded-full bg-[#f5a623] hover:bg-[#f9c04a] transition-colors flex-shrink-0"
             aria-label="Minimize"
-            title="Minimize"
           />
           <button
             onClick={() => ipc.window.hideOverlay()}
-            className="w-3 h-3 rounded-full bg-red-500 hover:bg-red-400 transition-colors flex-shrink-0"
-            aria-label="Close"
-            title="Close (hides to tray)"
+            className="w-3 h-3 rounded-full bg-[#e0534a] hover:bg-[#e8706a] transition-colors flex-shrink-0"
+            aria-label="Close (hides to tray)"
           />
         </div>
       </div>
@@ -133,53 +147,54 @@ export function OverlayPanel(): React.JSX.Element {
       </div>
 
       {/* Day controls */}
-      <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2 border-b border-white/10">
-        <span className="text-xs text-text-muted flex-1">
-          {today} {dayBoundary ? `· started ${new Date(dayBoundary.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
-          {dayBoundary?.endTime ? ` → ${new Date(dayBoundary.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+      <div
+        className="flex-shrink-0 flex items-center gap-2 px-6 py-3 border-b border-border"
+        style={{ background: `rgba(28, 31, 39, ${bgOpacity.toFixed(2)})` }}
+      >
+        <span className="text-sm font-medium text-text-primary flex-1">
+          {today} {dayBoundary ? <span className="text-text-muted font-normal">· started {new Date(dayBoundary.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span> : ''}
+          {dayBoundary?.endTime ? <span className="text-text-muted font-normal"> → {new Date(dayBoundary.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span> : ''}
         </span>
         {!dayBoundary ? (
-          <button onClick={handleStartDay} className="text-xs px-3 py-1 rounded bg-accent text-white hover:bg-accent/90 transition-colors">
+          <button onClick={handleStartDay} className="text-sm px-4 py-1.5 rounded-lg bg-accent text-[#0a0c10] font-semibold hover:bg-accent-hover transition-colors shadow-[0_0_14px_rgba(14,165,233,0.22)]">
             Start Day
           </button>
         ) : !dayBoundary.endTime ? (
-          <button onClick={handleEndDay} className="text-xs px-3 py-1 rounded border border-white/20 text-text-muted hover:text-text-primary hover:border-white/40 transition-colors">
+          <button onClick={handleEndDay} className="text-sm px-4 py-1.5 rounded-lg border border-border text-text-muted hover:text-text-primary hover:border-border-hover transition-colors bg-surface">
             End Day
           </button>
         ) : (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-text-muted">Day ended</span>
-            <button onClick={handleContinueDay} className="text-xs px-3 py-1 rounded border border-white/20 text-text-muted hover:text-text-primary hover:border-white/40 transition-colors">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-text-muted">Day ended</span>
+            <button onClick={handleContinueDay} className="text-sm px-4 py-1.5 rounded-lg border border-border text-text-muted hover:text-text-primary hover:border-border-hover transition-colors bg-surface">
               Continue
             </button>
           </div>
         )}
-        {CALENDAR_ENABLED && (
-          <button
-            onClick={() => setView(view === 'calendar' ? 'timeline' : 'calendar')}
-            className={['text-text-muted hover:text-text-primary transition-colors text-sm px-1', view === 'calendar' ? 'text-accent' : ''].join(' ')}
-            aria-label="Calendar settings"
-            title="Calendar"
-          >
-            📅
-          </button>
-        )}
-        <button
-          onClick={() => setView(view === 'appearance' ? 'timeline' : 'appearance')}
-          className={['text-text-muted hover:text-text-primary transition-colors text-sm px-1', view === 'appearance' ? 'text-accent' : ''].join(' ')}
-          aria-label="Appearance settings"
-          title="Appearance"
-        >
-          🎨
-        </button>
       </div>
 
       {/* Main content */}
-      <div className="flex-1 min-h-0 flex flex-col">
-        {view === 'timeline' && <Timeline />}
-        {view === 'settings' && <WorkOrderSettings />}
-        {view === 'appearance' && <AppearanceSettings />}
-        {view === 'calendar' && CALENDAR_ENABLED && <CalendarSettings />}
+      <div className="flex-1 min-h-0 flex flex-row">
+        <SideNav currentView={view} onViewChange={setView} calendarEnabled={CALENDAR_ENABLED} />
+        <div className="flex-1 flex flex-col min-w-0 bg-transparent overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-accent/5 rounded-full blur-[100px] pointer-events-none -z-10 mix-blend-screen mix-blend-plus-lighter" />
+          <div className="relative z-10 flex-1 flex flex-col overflow-hidden">
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.div
+                key={view}
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+                className="flex-1 flex flex-col p-5 overflow-y-auto"
+              >
+                {view === 'timeline' && <Timeline />}
+                {view === 'settings' && <WorkOrderSettings />}
+                {view === 'appearance' && <AppearanceSettings />}
+                {view === 'calendar' && CALENDAR_ENABLED && <CalendarSettings />}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
 
       {/* Footer hint */}

@@ -259,23 +259,20 @@ export function QuickCaptureBar(): React.JSX.Element {
     }
   }
 
-  const MAX_VISIBLE_COMMANDS = 5
-  const commandsToShow = isSlashMode && !isWorkOrderMode ? matchedCommands.slice(0, MAX_VISIBLE_COMMANDS) : []
-  const workOrdersToShow = isWorkOrderMode ? matchedWorkOrders.slice(0, MAX_VISIBLE_COMMANDS) : []
-  const hiddenCount = isSlashMode ? matchedCommands.length - commandsToShow.length : 0
-  const hiddenWorkOrderCount = isWorkOrderMode ? matchedWorkOrders.length - workOrdersToShow.length : 0
+  const commandsToShow = isSlashMode && !isWorkOrderMode ? matchedCommands : []
+  const workOrdersToShow = isWorkOrderMode ? matchedWorkOrders : []
 
   return (
-    <div className="w-full h-full flex flex-col bg-transparent pt-4 px-4">
+    <div className="w-full h-full flex flex-col bg-transparent pt-4 px-4 pb-4">
       <div className="flex flex-col gap-1.5">
         {/* Input card */}
-        <div className="flex items-center gap-2 bg-surface-elevated border border-border rounded-xl px-4 shadow-2xl">
-          <span className="text-accent text-base shrink-0 pointer-events-none select-none">▶</span>
+        <div className="flex items-center gap-3 bg-surface-elevated border-2 border-border focus-within:border-accent/50 rounded-2xl p-3 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.6),0_0_20px_-5px_rgba(14,165,233,0.1)] transition-all">
+          <span className="w-8 h-8 flex items-center justify-center bg-accent/20 rounded-xl text-accent text-sm shrink-0 pointer-events-none select-none ml-1">▶</span>
 
           {activeWorkOrder && !isWorkOrderMode && (
-            <div className="shrink-0 max-w-[220px] rounded-lg border border-accent/25 bg-accent/10 px-2.5 py-1.5">
+            <div className="shrink-0 max-w-[220px] rounded-xl border border-accent/40 bg-accent/10 px-3 py-1.5 shadow-sm">
               <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-accent/80">WO</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-accent">WO</span>
                 <span className="truncate text-xs font-medium text-text-primary">{activeWorkOrder.code}</span>
               </div>
               <p className="truncate text-[11px] text-text-muted">{activeWorkOrder.projectName}</p>
@@ -288,8 +285,8 @@ export function QuickCaptureBar(): React.JSX.Element {
               className="absolute inset-0 flex items-center pointer-events-none select-none overflow-hidden"
               aria-hidden
             >
-              <span className="text-sm text-text-primary whitespace-pre">{value}</span>
-              <span className="text-sm text-text-muted opacity-50 whitespace-pre">
+              <span className="text-base text-text-primary whitespace-pre">{value}</span>
+              <span className="text-base text-text-muted opacity-50 whitespace-pre">
                 {ghostSuffix}
               </span>
             </div>
@@ -303,7 +300,7 @@ export function QuickCaptureBar(): React.JSX.Element {
               }}
               onKeyDown={handleKeyDown}
               placeholder={isWorkOrderMode ? 'Filter work orders…' : 'What are you working on?'}
-              className="relative w-full bg-transparent text-transparent placeholder-text-muted text-sm py-4 outline-none"
+              className="relative w-full bg-transparent text-transparent placeholder-text-muted text-base py-3 outline-none"
               style={{ caretColor: 'var(--color-text-primary)' }}
               autoComplete="off"
               spellCheck={false}
@@ -311,7 +308,7 @@ export function QuickCaptureBar(): React.JSX.Element {
           </div>
 
           {value && !isSlashMode && (
-            <kbd className="text-xs text-text-muted border border-border rounded px-1 py-0.5 shrink-0">
+            <kbd className="text-[10px] font-semibold tracking-wider text-text-muted border border-border bg-surface rounded-md px-1.5 py-0.5 shrink-0 uppercase">
               Enter
             </kbd>
           )}
@@ -319,7 +316,7 @@ export function QuickCaptureBar(): React.JSX.Element {
 
         {/* Tab-to-complete hint */}
         {ghostSuffix && (
-          <div className="px-4 text-xs text-text-muted flex items-center gap-2">
+          <div className="px-4 text-xs font-medium text-text-muted flex items-center gap-2">
             <span>↹ Tab to complete</span>
             {matchCount > 1 && (
               <span className="opacity-60">
@@ -336,34 +333,34 @@ export function QuickCaptureBar(): React.JSX.Element {
           </div>
         )}
 
-        {/* Slash command picker */}
-        {commandsToShow.length > 0 && (
-          <div className="bg-surface-elevated border border-border rounded-xl overflow-hidden shadow-2xl">
+      </div>
+
+      {/* Slash command picker — scrollable, fills remaining window height */}
+      {commandsToShow.length > 0 && (
+        <div className="mt-2 flex-1 min-h-0 flex flex-col bg-surface-elevated border border-border rounded-[1rem] shadow-2xl overflow-hidden">
+          <div className="overflow-y-auto flex-1 min-h-0 p-1 flex flex-col gap-1">
             {commandsToShow.map((cmd, i) => (
               <button
                 key={cmd.name}
                 onClick={() => handleCommandClick(cmd)}
                 className={[
-                  'w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors',
+                  'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm transition-all shrink-0',
                   i === highlightedCmd
-                    ? 'bg-accent/10 text-text-primary'
-                    : 'text-text-muted hover:bg-white/5 hover:text-text-primary'
+                    ? 'bg-accent/20 text-accent font-medium'
+                    : 'text-text-muted hover:bg-surface hover:text-text-primary'
                 ].join(' ')}
               >
                 <span className="font-mono text-accent">/{cmd.name}</span>
-                <span className="text-xs">{cmd.description}</span>
+                <span className="text-xs opacity-75">{cmd.description}</span>
               </button>
             ))}
-            {hiddenCount > 0 && (
-              <div className="px-4 py-1.5 text-xs text-text-muted border-t border-white/10">
-                +{hiddenCount} more — keep typing to filter
-              </div>
-            )}
           </div>
-        )}
+        </div>
+      )}
 
-        {workOrdersToShow.length > 0 && (
-          <div className="bg-surface-elevated border border-border rounded-xl overflow-hidden shadow-2xl">
+      {workOrdersToShow.length > 0 && (
+        <div className="mt-2 flex-1 min-h-0 flex flex-col bg-surface-elevated border border-border rounded-[1.5rem] shadow-2xl overflow-hidden">
+          <div className="overflow-y-auto flex-1 min-h-0 p-1 flex flex-col gap-1">
             {workOrdersToShow.map((option, i) => (
               <button
                 key={option.workOrderId}
@@ -371,10 +368,10 @@ export function QuickCaptureBar(): React.JSX.Element {
                   void selectWorkOrder(option)
                 }}
                 className={[
-                  'w-full flex items-start gap-3 px-4 py-2 text-left text-sm transition-colors',
+                  'w-full flex items-start gap-3 px-4 py-3 rounded-[1rem] text-left text-sm transition-all shrink-0',
                   i === highlightedCmd
-                    ? 'bg-accent/10 text-text-primary'
-                    : 'text-text-muted hover:bg-white/5 hover:text-text-primary'
+                    ? 'bg-accent/20 text-accent font-medium'
+                    : 'text-text-muted hover:bg-surface hover:text-text-primary'
                 ].join(' ')}
               >
                 <span className="font-mono text-accent shrink-0">{option.code}</span>
@@ -384,14 +381,9 @@ export function QuickCaptureBar(): React.JSX.Element {
                 </span>
               </button>
             ))}
-            {hiddenWorkOrderCount > 0 && (
-              <div className="px-4 py-1.5 text-xs text-text-muted border-t border-white/10">
-                +{hiddenWorkOrderCount} more work orders — keep typing to filter
-              </div>
-            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
