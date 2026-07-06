@@ -12,9 +12,10 @@ import { SideNav } from './SideNav'
 import { WorkOrderSettings } from '../Settings/WorkOrderSettings'
 import { AppearanceSettings } from '../Settings/AppearanceSettings'
 import { CalendarSettings } from '../Settings/CalendarSettings'
+import { SubmitPanel } from '../Submit/SubmitPanel'
 import type { TimeBlock } from '@shared/types'
 
-type View = 'timeline' | 'settings' | 'appearance' | 'calendar'
+type View = 'timeline' | 'settings' | 'appearance' | 'calendar' | 'submit'
 
 const CALENDAR_ENABLED = import.meta.env.VITE_CALENDAR_ENABLED === 'true'
 
@@ -191,6 +192,7 @@ export function OverlayPanel(): React.JSX.Element {
                 {view === 'settings' && <WorkOrderSettings />}
                 {view === 'appearance' && <AppearanceSettings />}
                 {view === 'calendar' && CALENDAR_ENABLED && <CalendarSettings />}
+                {view === 'submit' && <SubmitPanel />}
               </motion.div>
             </AnimatePresence>
           </div>

@@ -14,6 +14,7 @@ import { autoUpdater } from 'electron-updater'
 import { initDb, closeDb, getDb } from './storage/db'
 import { registerStorageHandlers } from './ipc/storage'
 import { registerCalendarHandlers, startCalendarRefreshTimer } from './ipc/calendar'
+import { registerSubmitHandlers, setOverlayWindowGetter } from './ipc/submit'
 import { setOverlayWindow, setQuickCaptureWindow, setAnchorWindow } from './windows'
 import { IPC, DEFAULT_APP_CONFIG } from '@shared/types'
 import type { AppConfig } from '@shared/types'
@@ -341,6 +342,8 @@ app.whenReady().then(() => {
   initDb()
   registerStorageHandlers()
   registerCalendarHandlers()
+  registerSubmitHandlers()
+  setOverlayWindowGetter(() => overlayWindow)
   registerWindowHandlers()
   startCalendarRefreshTimer(() => overlayWindow)
 

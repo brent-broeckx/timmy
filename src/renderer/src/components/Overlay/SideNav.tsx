@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { LayoutDashboard, Settings, Palette, Calendar, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Settings, Palette, Calendar, Send, ChevronRight } from 'lucide-react'
 import { useConfigStore } from '../../store/useConfigStore'
 
-type View = 'timeline' | 'settings' | 'appearance' | 'calendar'
+type View = 'timeline' | 'settings' | 'appearance' | 'calendar' | 'submit'
 
 type Props = {
   currentView: View
@@ -23,6 +23,7 @@ export function SideNav({ currentView, onViewChange, calendarEnabled }: Props): 
     { id: 'settings', label: 'Work Orders', icon: Settings },
     ...(calendarEnabled ? [{ id: 'calendar', label: 'Calendar', icon: Calendar }] : []),
     { id: 'appearance', label: 'Appearance', icon: Palette },
+    { id: 'submit', label: 'Submit', icon: Send },
   ] as const
 
   return (

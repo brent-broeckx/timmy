@@ -46,11 +46,23 @@ export const IPC = {
   CALENDAR_FETCH_EVENTS: 'calendar:fetchEvents',
   CALENDAR_GET_EVENTS: 'calendar:getEvents',
   CALENDAR_PULL_EVENT: 'calendar:pullEvent',
+  // Submit / Playwright automation
+  SUBMIT_CHECK_SESSION: 'submit:checkSession',
+  SUBMIT_WAIT_FOR_LOGIN: 'submit:waitForLogin',
+  SUBMIT_GET_ENTRIES: 'submit:getEntries',
+  SUBMIT_CLEAR_SESSION: 'submit:clearSession',
+  SUBMIT_START: 'submit:start',
+  SUBMIT_GET_PROGRESS: 'submit:getProgress',
+  SUBMIT_CONFIRM_WEEK: 'submit:confirmWeek',
+  SUBMIT_CANCEL: 'submit:cancel',
+  SUBMIT_GET_RESULT: 'submit:getResult',
   // Push notifications (main → renderer, no response)
   STATE_TASK_CHANGED: 'state:taskChanged',
   STATE_PROJECTS_CHANGED: 'state:projectsChanged',
   STATE_OVERLAY_VISIBILITY: 'state:overlayVisibility',
   STATE_CALENDAR_UPDATED: 'state:calendarUpdated',
+  STATE_SUBMIT_PROGRESS: 'state:submitProgress',
+  STATE_SUBMIT_PROMPT: 'state:submitPrompt',
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
@@ -132,13 +144,37 @@ export type CalendarConnectorStatus = {
   lastFetchedAt: string | null
 }
 
-export type SubmitFieldMap = {
-  projectSelector: string
-  workOrderSelector: string
-  hoursSelector: string
-  descriptionSelector: string
-  addRowSelector: string
-  submitSelector: string
+export type SubmitEntry = {
+  date: string             // ISO date "YYYY-MM-DD"
+  workOrderCode: string
+  workOrderId: string
+  projectId: string
+  decimalHours: number
+  blockTitles: string[]
+}
+
+export type SubmitProgress = {
+  currentWeek: string      // ISO date of week Monday
+  weekLabel: string        // YYYYWW
+  status: 'idle' | 'navigating' | 'filling' | 'awaiting-confirm' | 'submitting' | 'complete' | 'error' | 'cancelled'
+  message: string
+  progress: number         // 0–100
+  weeksTotal: number
+  weeksDone: number
+}
+
+export type SubmitPrompt = {
+  weekStart: string        // ISO date of Monday
+  weekEnd: string          // ISO date of Sunday
+  weekLabel: string        // YYYYWW
+  entries: SubmitEntry[]
+}
+
+export type SubmitResult = {
+  success: boolean
+  weeksSubmitted: number
+  entriesSubmitted: number
+  errors: string[]
 }
 
 export type AppConfig = {
@@ -151,7 +187,6 @@ export type AppConfig = {
   undoStackDepth: number // default 20
   quickCaptureWorkOrderId: string | null
   connectors: ConnectorConfig[]
-  submitFieldMap: SubmitFieldMap | null
 }
 
 // ─── Default config ──────────────────────────────────────────────────────────
@@ -165,7 +200,6 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   undoStackDepth: 20,
   quickCaptureWorkOrderId: null,
   connectors: [],
-  submitFieldMap: null,
 }
 
 // ─── Utility ─────────────────────────────────────────────────────────────────

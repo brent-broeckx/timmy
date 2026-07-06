@@ -23,7 +23,15 @@ timmy/
 │   ├── main/                 # Electron main process (Node.js)
 │   │   ├── index.ts          # App entry: windows, tray, shortcuts, IPC setup
 │   │   ├── ipc/
-│   │   │   └── storage.ts    # All ipcMain.handle() handlers
+│   │   │   ├── storage.ts    # All ipcMain.handle() handlers (timeline, tasks, config)
+│   │   │   ├── calendar.ts   # Calendar connector IPC handlers
+│   │   │   └── submit.ts     # Playwright auto-submit IPC handlers
+│   │   ├── playwright/
+│   │   │   ├── errors.ts     # Typed Playwright error classes
+│   │   │   ├── session.ts    # Persistent Chromium context (Entra ID SSO)
+│   │   │   ├── wizard.ts     # Field mapping wizard (click capture)
+│   │   │   ├── navigate.ts   # YYYYWW week navigation + ISO week utils
+│   │   │   └── submit.ts     # Core submit engine
 │   │   └── storage/
 │   │       ├── db.ts         # SQLite singleton + migration runner
 │   │       └── __tests__/
@@ -51,7 +59,11 @@ timmy/
 │               ├── QuickCapture/
 │               ├── Overlay/
 │               ├── Timeline/
-│               └── Settings/
+│               ├── Settings/
+│               └── Submit/
+│                   ├── DateRangePicker.tsx  # Same-month date range UI
+│                   ├── WizardPanel.tsx      # Field mapping wizard UI
+│                   └── SubmitPanel.tsx      # Submit flow + progress + result
 ├── plans/                    # Phase build plans
 ├── AGENT-PROMPT.md           # Engineering guidelines for AI agents
 ├── PROJECT.md                # Full product spec
@@ -65,6 +77,8 @@ timmy/
 ---
 
 ## Current Phase
+
+**Phase 4 — Playwright Auto-Submit** ✅ CORE COMPLETE (submit history pending)
 
 **Phase 3 — Calendar Integration** ✅ COMPLETE — see `plans/phase3-calendar-integration.md` for detail.
 

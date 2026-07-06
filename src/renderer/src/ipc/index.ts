@@ -3,7 +3,7 @@
 // All other renderer code imports from here — never calls window.timmy directly.
 
 import { IPC } from '@shared/types'
-import type { TimeBlock, DayBoundary, Project, WorkOrder, AppConfig, CalendarEvent, CalendarConnectorStatus, TaskStartInput, IpcResponse } from '@shared/types'
+import type { TimeBlock, DayBoundary, Project, WorkOrder, AppConfig, CalendarEvent, CalendarConnectorStatus, TaskStartInput, IpcResponse, SubmitEntry, SubmitProgress, SubmitPrompt, SubmitResult } from '@shared/types'
 
 async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
   const response = await window.timmy.invoke<T>(channel, ...args)
@@ -114,6 +114,33 @@ export const ipc = {
   },
   offCalendarUpdated: (cb: (date: string) => void): void => {
     unregisterPush(cb, IPC.STATE_CALENDAR_UPDATED)
+  },
+  // ── Submit / Playwright automation ─────────────────────────────────────────
+  submit: {
+    checkSession: () => invoke<{ sessionExists: boolean }>(IPC.SUBMIT_CHECK_SESSION),
+    clearSession: () => invoke<void>(IPC.SUBMIT_CLEAR_SESSION),
+    getEntries: (startDate: string, endDate: string) =>
+      invoke<SubmitEntry[]>(IPC.SUBMIT_GET_ENTRIES, startDate, endDate),
+    start: (startDate: string, endDate: string) =>
+      invoke<void>(IPC.SUBMIT_START, startDate, endDate),
+    confirmWeek: (weekStart: string, confirmed: boolean) =>
+      invoke<void>(IPC.SUBMIT_CONFIRM_WEEK, weekStart, confirmed),
+    cancel: () => invoke<void>(IPC.SUBMIT_CANCEL),
+    getResult: () => invoke<SubmitResult | null>(IPC.SUBMIT_GET_RESULT),
+  },
+  // Push: submit progress update
+  onSubmitProgress: (cb: (p: SubmitProgress) => void): void => {
+    registerPush(cb, IPC.STATE_SUBMIT_PROGRESS)
+  },
+  offSubmitProgress: (cb: (p: SubmitProgress) => void): void => {
+    unregisterPush(cb, IPC.STATE_SUBMIT_PROGRESS)
+  },
+  // Push: per-week confirmation prompt
+  onSubmitPrompt: (cb: (p: SubmitPrompt) => void): void => {
+    registerPush(cb, IPC.STATE_SUBMIT_PROMPT)
+  },
+  offSubmitPrompt: (cb: (p: SubmitPrompt) => void): void => {
+    unregisterPush(cb, IPC.STATE_SUBMIT_PROMPT)
   },
 }
 

@@ -148,23 +148,40 @@ Calendar events populate automatically every morning. The timeline for any consu
 ## Phase 4 — Playwright Auto-Submit
 *Goal: End-of-day submission is one button.*
 
-- [ ] **Setup wizard**
-  - Guides user through mapping their time registration web app fields
-  - "Click the project dropdown" → wizard records the selector
-  - "Click the work order field" → records selector
-  - "Click the hours field" → records selector
-  - Stores field map locally in config
+- [x] **Field mapping wizard**
+  - One-time setup: maps period input, row identifier, column header, submit button
+  - Click-capture overlay injected into Playwright browser
+  - Field map auto-saved to SQLite config on wizard completion
+  - Re-runnable from Submit settings
 
-- [ ] **Submit engine**
-  - On Submit click, Playwright opens or attaches to the time registration web app
-  - Iterates through finalized timeline entries
-  - Fills each row: project, work order, hours (decimal), description
-  - Pauses for user to review before final save
+- [x] **Persistent browser session (Entra ID)**
+  - `playwright.chromium.launchPersistentContext` saves session to `<userData>/playwright-session`
+  - User logs in manually once; subsequent runs reuse the session
+  - Session expiry detection: redirects to `login.microsoftonline.com` are caught and surfaced to user
+  - Clear session option in Settings
 
-- [ ] **Error handling**
-  - If a field can't be found, highlights the problematic entry in the timeline
-  - User can re-run setup wizard to remap fields
-  - Partial submit support (submit what worked, flag what didn't)
+- [x] **Date range picker (renderer)**
+  - Calendar UI with same-month constraint (cross-month ranges blocked)
+  - Dot indicator on dates with submittable entries
+  - Minimum range: 1 day; maximum: full calendar month
+
+- [x] **Week navigation (YYYYWW format)**
+  - ISO 8601-compliant week/year calculation (handles Dec/Jan year boundary)
+  - Tab-out to trigger table reload after writing period value
+  - 2-retry logic before surfacing `NavigationFailedError`
+
+- [x] **Core submit engine**
+  - Loads finalized blocks (non-deleted, completed, work order assigned)
+  - Groups by ISO week → date → work order; sums to 2 decimal places
+  - Fills table cells by row text match + column date match
+  - Per-week user confirmation before clicking submit button
+  - Fully cancellable at any point
+  - Typed error classes for all failure modes
+
+- [x] **Submit progress UI (renderer)**
+  - Live progress bar + status message via push IPC
+  - Per-week confirmation prompt with entry list
+  - Result screen with error list for skipped entries
 
 - [ ] **Submit history**
   - Log of successful submits per day stored locally
