@@ -207,10 +207,6 @@ End-of-day time registration takes under two minutes including review. The tool 
   - Setup guide, connector configuration, FAQ
   - Internal company wiki page or lightweight static site
 
-- [ ] **Onboarding flow**
-  - First-run wizard: set anchor position, shortcut, connect calendar, configure first project
-  - Takes under 5 minutes
-
 - [ ] **Feedback mechanism**
   - Simple in-app "Send feedback" that composes an email or Teams message (no telemetry)
 

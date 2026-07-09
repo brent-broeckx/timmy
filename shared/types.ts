@@ -156,7 +156,7 @@ export type SubmitEntry = {
 export type SubmitProgress = {
   currentWeek: string      // ISO date of week Monday
   weekLabel: string        // YYYYWW
-  status: 'idle' | 'navigating' | 'filling' | 'awaiting-confirm' | 'submitting' | 'complete' | 'error' | 'cancelled'
+  status: 'idle' | 'navigating' | 'filling' | 'awaiting-confirm' | 'submitting' | 'waiting-for-login' | 'complete' | 'error' | 'cancelled'
   message: string
   progress: number         // 0–100
   weeksTotal: number

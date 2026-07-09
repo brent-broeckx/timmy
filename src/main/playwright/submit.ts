@@ -7,7 +7,7 @@ import type { Page, Frame } from 'playwright'
 import type { SubmitEntry, SubmitProgress, SubmitPrompt, SubmitResult } from '@shared/types'
 import { getDb } from '../storage/db'
 import { navigateToWeek, toYYYYWW, getWeekMonday, getWeekSunday, findFrameContaining } from './navigate'
-import { assertNotLoginPage, getActivePage, launchSession } from './session'
+import { assertNotLoginPage, getActivePage, launchSession, waitForLoginCompletion } from './session'
 import { TIME_REG_CONFIG } from './connectors/company-timeregistration'
 import {
   CellNotInteractableError,
@@ -329,9 +329,18 @@ export async function runSubmit(
     await assertNotLoginPage(page)
   } catch (e) {
     if (e instanceof SessionExpiredError) {
-      emit({ status: 'error', message: e.message }, progress)
-      _result = { success: false, weeksSubmitted, entriesSubmitted, errors: [e.message] }
-      return _result
+      emit({ status: 'waiting-for-login', message: 'Session expired — please log in in the browser window. Submit will resume automatically.' }, progress)
+      try {
+        await waitForLoginCompletion(page)
+        // Navigate to the base URL so Agresso is at a known starting state
+        await page.goto(TIME_REG_CONFIG.url, { timeout: 30_000 })
+        await page.waitForLoadState('domcontentloaded', { timeout: 30_000 })
+      } catch {
+        const msg = 'Login timed out (5 minutes). Please restart the submit.'
+        emit({ status: 'error', message: msg }, progress)
+        _result = { success: false, weeksSubmitted, entriesSubmitted, errors: [msg] }
+        return _result
+      }
     }
   }
 
@@ -367,9 +376,20 @@ export async function runSubmit(
       await assertNotLoginPage(page)
     } catch (e) {
       if (e instanceof SessionExpiredError) {
-        emit({ status: 'error', message: e.message }, progress)
-        _result = { success: false, weeksSubmitted, entriesSubmitted, errors: [e.message, ...errors] }
-        return _result
+        emit({ status: 'waiting-for-login', message: `Session expired mid-submit — please log in in the browser. Week ${week.weekLabel} will resume automatically.` }, progress)
+        try {
+          await waitForLoginCompletion(page)
+          // Return to the base URL so Agresso is at a known starting state
+          await page.goto(TIME_REG_CONFIG.url, { timeout: 30_000 })
+          await page.waitForLoadState('domcontentloaded', { timeout: 30_000 })
+          // Re-navigate to the current week
+          await navigateToWeek(page, week.weekLabel)
+        } catch (loginErr) {
+          const msg = loginErr instanceof Error ? loginErr.message : 'Login or re-navigation failed after session expiry.'
+          errors.push(msg)
+          emit({ status: 'error', message: msg }, progress)
+          continue
+        }
       }
     }
 
