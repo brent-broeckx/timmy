@@ -1,12 +1,12 @@
 # Phase 3 — Calendar Integration
 
-**Status:** Implemented ✅
+**Status:** Implemented ✅ — superseded by Outlook CSV import (Graph/MSAL removed)
 
 ---
 
 ## Summary
 
-Phase 3 integrates Microsoft Graph Calendar into Timmy. When the user starts their day, today's meetings are automatically fetched and imported as `calendar`-source blocks on the timeline. All-day events appear in a dedicated strip above the time grid where the user can selectively pull them into the timeline. OAuth tokens are encrypted at rest using Electron's `safeStorage` API and stored in SQLite. Periodic refresh runs every 5 minutes silently in the background.
+Phase 3 now imports Outlook calendar exports from CSV. Users export calendar rows through Power Automate, drop the `.csv` into Timmy, and timed events are imported as `calendar`-source blocks. Outlook `eventId` values are stored as `sourceId` so repeated exports update known blocks instead of duplicating them. All-day events remain available in the strip above the timeline for manual pull-in.
 
 ---
 
@@ -14,38 +14,35 @@ Phase 3 integrates Microsoft Graph Calendar into Timmy. When the user starts the
 
 ### New files
 
-| File | Purpose |
-|------|---------|
-| `src/main/connectors/graph-calendar.ts` | MSAL OAuth, token persistence, Graph API fetch, SQLite helpers |
-| `src/main/ipc/calendar.ts` | IPC handlers + periodic refresh timer |
-| `src/renderer/src/components/Settings/CalendarSettings.tsx` | Connect/disconnect UI with setup instructions |
+| File                                                        | Purpose                                                   |
+| ----------------------------------------------------------- | --------------------------------------------------------- |
+| `src/main/connectors/outlook-csv-calendar.ts`               | CSV parse, event upsert, sourceId dedupe, timeline import |
+| `src/main/ipc/calendar.ts`                                  | CSV import, calendar event list, pull-event IPC handlers  |
+| `src/renderer/src/components/Settings/CalendarSettings.tsx` | Drag/drop and click-to-select CSV import UI               |
 
 ### Modified files
 
-| File | Change |
-|------|--------|
-| `shared/types.ts` | `CalendarEvent`, `CalendarConnectorStatus`, 7 new IPC constants |
-| `src/main/storage/db.ts` | Migration `002_calendar.sql` — `calendar_events` + `connector_tokens` tables |
-| `src/main/index.ts` | Register `registerCalendarHandlers()`, start periodic refresh timer |
-| `src/preload/index.ts` | Add 6 calendar handle channels + `STATE_CALENDAR_UPDATED` push channel |
-| `src/renderer/src/ipc/index.ts` | `ipc.calendar.*` client functions, `onCalendarUpdated`/`offCalendarUpdated` push handlers |
-| `src/renderer/src/components/Timeline/Timeline.tsx` | Load calendar events on date change, subscribe to `STATE_CALENDAR_UPDATED`, pass to DayView |
-| `src/renderer/src/components/Timeline/DayView.tsx` | All-day events strip above time grid, `onCalendarEventsChanged` prop |
-| `src/renderer/src/components/Overlay/OverlayPanel.tsx` | 📅 Calendar tab button, auto-fetch on `startDay` |
+| File                                                   | Change                                                                                      |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| `shared/types.ts`                                      | `CalendarEvent`, `CalendarImportResult`, calendar IPC constants                             |
+| `src/main/storage/db.ts`                               | Migration `002_calendar.sql` — `calendar_events` + `connector_tokens` tables                |
+| `src/main/index.ts`                                    | Register `registerCalendarHandlers()`                                                       |
+| `src/preload/index.ts`                                 | Add calendar handle channels + `STATE_CALENDAR_UPDATED` push channel                        |
+| `src/renderer/src/ipc/index.ts`                        | `ipc.calendar.*` client functions, `onCalendarUpdated`/`offCalendarUpdated` push handlers   |
+| `src/renderer/src/components/Timeline/Timeline.tsx`    | Load calendar events on date change, subscribe to `STATE_CALENDAR_UPDATED`, pass to DayView |
+| `src/renderer/src/components/Timeline/DayView.tsx`     | All-day events strip above time grid, `onCalendarEventsChanged` prop                        |
+| `src/renderer/src/components/Overlay/OverlayPanel.tsx` | Calendar tab button                                                                         |
 
 ---
 
 ## IPC Channels
 
-| Channel | Direction | Purpose |
-|---------|-----------|---------|
-| `calendar:getStatus` | invoke | Get connected state, email, lastFetchedAt |
-| `calendar:connect` | invoke | Start OAuth flow (opens auth window) |
-| `calendar:disconnect` | invoke | Clear tokens and reset MSAL state |
-| `calendar:fetchEvents` | invoke | Fetch today from Graph, upsert DB, push update |
-| `calendar:getEvents` | invoke | Read calendar events for a date from SQLite |
-| `calendar:pullEvent` | invoke | Import an all-day event as a timeline block |
-| `state:calendarUpdated` | push (main→renderer) | Date string — renderer reloads blocks + events |
+| Channel                 | Direction            | Purpose                                                            |
+| ----------------------- | -------------------- | ------------------------------------------------------------------ |
+| `calendar:importCsv`    | invoke               | Parse Outlook CSV, upsert events, import timed blocks, push update |
+| `calendar:getEvents`    | invoke               | Read calendar events for a date from SQLite                        |
+| `calendar:pullEvent`    | invoke               | Import an all-day event as a timeline block                        |
+| `state:calendarUpdated` | push (main→renderer) | Date string — renderer reloads blocks + events                     |
 
 ---
 
@@ -56,43 +53,43 @@ calendar_events (id, date, start_time, end_time, title, organizer, is_all_day, s
 connector_tokens (connector, token_data, account_email, updated_at)
 ```
 
-- `connector_tokens.token_data` stores the MSAL token cache JSON encrypted with `safeStorage.encryptString()`.
-- If `safeStorage.isEncryptionAvailable()` returns false (non-standard OS config), falls back to unencrypted base64 with a console warning.
+- `calendar_events.source_id` stores the Outlook export `eventId`.
+- `time_blocks.source_id` stores the same value for imported timed events, allowing repeated CSV exports to update known blocks instead of duplicating them.
+- `connector_tokens` remains from the original migration but is not used by the CSV import path.
 
 ---
 
-## OAuth Flow
+## CSV Import Flow
 
-1. User enters Azure AD `clientId` (and optional `tenantId`) in Calendar Settings.
-2. Clicks **Connect with Microsoft** → `calendar:connect` IPC call.
-3. Main process calls `connectCalendar(clientId, tenantId)`.
-4. If no cached tokens: starts a local HTTP server on port 7891, opens an Electron `BrowserWindow` pointing to the MSAL auth URL.
-5. User signs in via the Microsoft OAuth consent flow.
-6. Browser redirects to `http://localhost:7891/auth/callback?code=...`.
-7. MSAL exchanges the code for tokens; cache plugin persists encrypted tokens to SQLite.
-8. Auth window closes; IPC returns `CalendarConnectorStatus`.
+1. User exports Outlook calendar rows to CSV through Power Automate.
+2. User drops the `.csv` onto Calendar Settings or clicks to select it.
+3. Renderer reads the local file text and sends it through `calendar:importCsv`.
+4. Main process parses rows with `eventTitle`, `startTime`, `endTime`, `location`, `isAllDay`, and `eventId`.
+5. Timed rows become `calendar` source timeline blocks. All-day rows stay in `calendar_events` for manual pull-in.
+6. Repeated imports use `eventId`/`sourceId` to update known blocks and avoid duplicates.
 
 ---
 
-## Auto-populate behaviour
+## Import Behaviour
 
-- **On Start Day**: `OverlayPanel.handleStartDay()` awaits `startDay()` then calls `ipc.calendar.fetchEvents(today)`. Failures are silently ignored (connector may not be configured yet).
-- **On manual sync**: "Sync today" button in Calendar Settings triggers `calendar:fetchEvents`.
-- **Periodic refresh**: every 5 minutes if connected. Pushes `STATE_CALENDAR_UPDATED` to overlay window.
-- **Timed meetings**: auto-imported as `source='calendar'` blocks. Re-fetch upserts (updates time/title if meeting was moved, never duplicates).
+- **Manual import**: Calendar Settings is always available from the sidebar and accepts local `.csv` files.
+- **Timed meetings**: imported as `source='calendar'` blocks. Re-import upserts by sourceId (updates time/title if meeting was moved, never duplicates).
 - **All-day events**: never auto-imported. Appear in the all-day strip above the time grid with a "→ Timeline" button.
 
 ---
 
-## User setup required (Azure AD app registration)
+## User setup required
 
-The user must create a free Azure AD app registration:
-1. `portal.azure.com` → Azure Active Directory → App registrations → New registration
-2. Platform: **Mobile and desktop applications**
-3. Redirect URI: `http://localhost:7891/auth/callback`
-4. API permissions: **Calendars.Read** (delegated)
+The user must export Outlook calendar rows to CSV through Power Automate or an equivalent local workflow. The CSV should include:
 
-This is documented inline in `CalendarSettings.tsx`.
+- `eventTitle`
+- `startTime`
+- `endTime`
+- `location`
+- `isAllDay`
+- `eventId`
+
+`eventBody` is intentionally ignored and not required.
 
 ---
 

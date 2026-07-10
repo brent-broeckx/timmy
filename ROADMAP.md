@@ -11,7 +11,8 @@ Each phase ends with a working, usable tool — not a half-built feature set. Ph
 ---
 
 ## Phase 1 — The Core Loop (MVP) ✅ COMPLETE
-*Goal: A working daily tool you can use personally from day one.*
+
+_Goal: A working daily tool you can use personally from day one._
 
 This phase is intentionally narrow. No integrations, no AI, no Playwright. Just the scaffold that makes the rest possible and a quick-capture flow that is immediately useful.
 
@@ -60,18 +61,21 @@ This phase is intentionally narrow. No integrations, no AI, no Playwright. Just 
   - Each timeline block can be assigned a project + work order from a dropdown
 
 ### Test Results
+
 - **20 / 20 tests passing** across 3 suites:
   - `src/main/storage/__tests__/db.test.ts` — 6 tests (SQLite migrations, FK enforcement, soft delete)
   - `src/renderer/src/store/__tests__/useTimelineStore.test.ts` — 9 tests (undo stack, block CRUD, sort)
   - `src/renderer/src/store/__tests__/useTaskStore.test.ts` — 5 tests (start/stop/clear/loadRecent)
 
 ### Exit Criteria ✅
+
 You can start your day, capture tasks as you work via the shortcut, review the timeline at end of day, adjust durations, assign work orders, and export a readable summary. No automation yet — but it already beats a notepad.
 
 ---
 
 ## Phase 2 — Polish & Glass UI
-*Goal: Make it feel like a real, premium product.*
+
+_Goal: Make it feel like a real, premium product._
 
 - [x] **Glassmorphism overlay**
   - Frosted glass effect on the overlay panel and quick-capture bar
@@ -109,18 +113,20 @@ You can start your day, capture tasks as you work via the shortcut, review the t
   - Visual indicator for full overlaps
 
 ### Exit Criteria
+
 The app looks and feels polished. Someone seeing it for the first time understands immediately what it does. The quick-capture bar is fast and smart. Ready to show colleagues.
 
 ---
 
 ## Phase 3 — Calendar Integration
-*Goal: Meetings appear automatically. The timeline has real anchors.*
 
-- [x] **Microsoft Graph API integration**
-  - OAuth login (read-only scopes: `Calendars.Read`)
-  - Fetch today's calendar events on Start Day
+_Goal: Meetings from Outlook exports become local timeline anchors._
+
+- [x] **Outlook CSV import**
+  - Manual `.csv` import from Power Automate calendar exports
+  - Store Outlook `eventId` as `sourceId` for dedupe on repeated imports
   - Auto-populate meetings as fixed blocks on the timeline
-  - Refresh periodically to catch late additions
+  - Update existing imported blocks when the same event ID is seen again
 
 - [x] **All-day event handling**
   - All-day events shown in a separate strip above the timeline
@@ -136,17 +142,19 @@ The app looks and feels polished. Someone seeing it for the first time understan
   - Meeting title, organizer visible on hover tooltip
   - Work order auto-suggested based on meeting title + description (AI routing, Phase 4)
 
-- [x] **Credentials storage**
-  - OAuth tokens encrypted with Electron `safeStorage` (OS credential manager)
-  - Token refresh handled silently via MSAL
+- [x] **No calendar credentials**
+  - No Graph app registration, approval flow, OAuth token, or periodic background sync
+  - Calendar import is driven by a small manual CSV action
 
 ### Exit Criteria ✅
-Calendar events populate automatically every morning. The timeline for any consultant is already 60–70% complete before they touch anything. Managers and analysts have a fully usable tool from this phase alone.
+
+Calendar events from an Outlook CSV export populate local timeline blocks without duplicate imports. Managers and analysts can keep the timeline anchored without Graph approvals or access tokens.
 
 ---
 
 ## Phase 4 — Playwright Auto-Submit
-*Goal: End-of-day submission is one button.*
+
+_Goal: End-of-day submission is one button._
 
 - [x] **Field mapping wizard**
   - One-time setup: maps period input, row identifier, column header, submit button
@@ -188,12 +196,14 @@ Calendar events populate automatically every morning. The timeline for any consu
   - User can view what was submitted and when
 
 ### Exit Criteria
+
 End-of-day time registration takes under two minutes including review. The tool has delivered its full value proposition.
 
 ---
 
 ## Phase 5 — Multi-User & Distribution
-*Goal: Roll out to colleagues.*
+
+_Goal: Roll out to colleagues._
 
 - [ ] **Installer (Windows)**
   - Electron Forge Windows installer (.exe / NSIS)
@@ -211,6 +221,7 @@ End-of-day time registration takes under two minutes including review. The tool 
   - Simple in-app "Send feedback" that composes an email or Teams message (no telemetry)
 
 ### Exit Criteria
+
 Any colleague can install and be up and running in under 10 minutes. The tool is officially shareable across the company.
 
 ---
@@ -218,7 +229,7 @@ Any colleague can install and be up and running in under 10 minutes. The tool is
 ## Future Considerations (Post v1)
 
 - Mac support (Electron already cross-platform, main effort is transparency/tray API differences)
-- Outlook calendar connector as alternative to Graph API
+- Richer calendar import diagnostics
 - Richer slash command library
 - Timeline templates for recurring day patterns
 - Weekly summary view (not just daily)

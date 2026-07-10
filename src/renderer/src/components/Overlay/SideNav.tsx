@@ -8,12 +8,11 @@ type View = 'timeline' | 'settings' | 'appearance' | 'calendar' | 'submit'
 type Props = {
   currentView: View
   onViewChange: (view: View) => void
-  calendarEnabled: boolean
 }
 
 const SPRING = { type: 'spring', stiffness: 320, damping: 32, mass: 0.8 } as const
 
-export function SideNav({ currentView, onViewChange, calendarEnabled }: Props): React.JSX.Element {
+export function SideNav({ currentView, onViewChange }: Props): React.JSX.Element {
   const [collapsed, setCollapsed] = useState(true)
   const glassIntensity = useConfigStore((s) => s.config.glassIntensity)
   const bgOpacity = 1 - (glassIntensity / 100) * 0.8
@@ -21,9 +20,9 @@ export function SideNav({ currentView, onViewChange, calendarEnabled }: Props): 
   const navItems = [
     { id: 'timeline', label: 'Timeline', icon: LayoutDashboard },
     { id: 'settings', label: 'Work Orders', icon: Settings },
-    ...(calendarEnabled ? [{ id: 'calendar', label: 'Calendar', icon: Calendar }] : []),
+    { id: 'calendar', label: 'Calendar', icon: Calendar },
     { id: 'appearance', label: 'Appearance', icon: Palette },
-    { id: 'submit', label: 'Submit', icon: Send },
+    { id: 'submit', label: 'Submit', icon: Send }
   ] as const
 
   return (
@@ -35,7 +34,7 @@ export function SideNav({ currentView, onViewChange, calendarEnabled }: Props): 
       style={{
         background: `rgba(17, 20, 24, ${bgOpacity.toFixed(2)})`,
         borderRight: '1px solid var(--color-border)',
-        overflow: 'hidden',
+        overflow: 'hidden'
       }}
     >
       {navItems.map((item) => {
@@ -50,7 +49,7 @@ export function SideNav({ currentView, onViewChange, calendarEnabled }: Props): 
                 className="absolute inset-0 rounded-md"
                 style={{
                   background: 'rgba(14, 165, 233, 0.1)',
-                  border: '1px solid rgba(14, 165, 233, 0.2)',
+                  border: '1px solid rgba(14, 165, 233, 0.2)'
                 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 40 }}
               />
@@ -63,7 +62,7 @@ export function SideNav({ currentView, onViewChange, calendarEnabled }: Props): 
                 collapsed ? 'justify-center px-0 py-3' : 'gap-2.5 px-3 py-2.5',
                 isActive
                   ? 'text-accent'
-                  : 'text-text-muted hover:text-text-primary hover:bg-white/[0.04]',
+                  : 'text-text-muted hover:text-text-primary hover:bg-white/[0.04]'
               ].join(' ')}
             >
               <Icon size={15} strokeWidth={isActive ? 2 : 1.75} className="flex-shrink-0" />
@@ -95,7 +94,7 @@ export function SideNav({ currentView, onViewChange, calendarEnabled }: Props): 
           className={[
             'flex items-center w-full rounded-md py-2 text-text-muted hover:text-text-primary',
             'hover:bg-white/[0.04] transition-colors duration-100',
-            collapsed ? 'justify-center px-0' : 'gap-2.5 px-3',
+            collapsed ? 'justify-center px-0' : 'gap-2.5 px-3'
           ].join(' ')}
         >
           <motion.span

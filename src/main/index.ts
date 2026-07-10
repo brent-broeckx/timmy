@@ -1,19 +1,19 @@
 import {
-  app,
-  shell,
-  BrowserWindow,
-  ipcMain,
-  Tray,
-  nativeImage,
-  globalShortcut,
-  screen,
+    app,
+    shell,
+    BrowserWindow,
+    ipcMain,
+    Tray,
+    nativeImage,
+    globalShortcut,
+    screen
 } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { autoUpdater } from 'electron-updater'
 import { initDb, closeDb, getDb } from './storage/db'
 import { registerStorageHandlers } from './ipc/storage'
-import { registerCalendarHandlers, startCalendarRefreshTimer } from './ipc/calendar'
+import { registerCalendarHandlers } from './ipc/calendar'
 import { registerSubmitHandlers, setOverlayWindowGetter } from './ipc/submit'
 import { setOverlayWindow, setQuickCaptureWindow, setAnchorWindow } from './windows'
 import { IPC, DEFAULT_APP_CONFIG } from '@shared/types'
@@ -30,9 +30,8 @@ let overlayMoved = false
 
 function readConfig(): AppConfig {
   try {
-    const row = getDb()
-      .prepare('SELECT value FROM config WHERE key = ?')
-      .get('app') as { value: string } | undefined
+    const row = getDb().prepare('SELECT value FROM config WHERE key = ?').get('app') as
+      { value: string } | undefined
     // Merge with defaults so newly-added config fields are always present
     if (row) return { ...DEFAULT_APP_CONFIG, ...(JSON.parse(row.value) as AppConfig) }
   } catch {
@@ -51,7 +50,7 @@ const ANCHOR_MARGIN = 12
 
 function getAnchorBounds(
   corner: AppConfig['anchorPosition'],
-  mode: AppConfig['anchorMode'],
+  mode: AppConfig['anchorMode']
 ): { x: number; y: number; width: number; height: number } {
   const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize
   const width = mode === 'dot-only' ? ANCHOR_DOT_W : ANCHOR_FULL_W
@@ -59,10 +58,22 @@ function getAnchorBounds(
   let x: number
   let y: number
   switch (corner) {
-    case 'TL': x = ANCHOR_MARGIN;                y = ANCHOR_MARGIN;               break
-    case 'TR': x = sw - width - ANCHOR_MARGIN;   y = ANCHOR_MARGIN;               break
-    case 'BL': x = ANCHOR_MARGIN;                y = sh - height - ANCHOR_MARGIN; break
-    default:   x = sw - width - ANCHOR_MARGIN;   y = sh - height - ANCHOR_MARGIN; break
+    case 'TL':
+      x = ANCHOR_MARGIN
+      y = ANCHOR_MARGIN
+      break
+    case 'TR':
+      x = sw - width - ANCHOR_MARGIN
+      y = ANCHOR_MARGIN
+      break
+    case 'BL':
+      x = ANCHOR_MARGIN
+      y = sh - height - ANCHOR_MARGIN
+      break
+    default:
+      x = sw - width - ANCHOR_MARGIN
+      y = sh - height - ANCHOR_MARGIN
+      break
   }
   return { x, y, width, height }
 }
@@ -73,10 +84,14 @@ function getOverlayPosition(corner: AppConfig['anchorPosition']): { x: number; y
   const oh = 700
   const ab = getAnchorBounds(corner, 'full')
   switch (corner) {
-    case 'TL': return { x: ab.x,                    y: ab.y + ab.height + 4 }
-    case 'TR': return { x: ab.x + ab.width - ow,    y: ab.y + ab.height + 4 }
-    case 'BL': return { x: ab.x,                    y: ab.y - oh - 4 }
-    default:   return { x: Math.max(0, sw - ow - ANCHOR_MARGIN), y: Math.max(0, sh - oh - ANCHOR_MARGIN) }
+    case 'TL':
+      return { x: ab.x, y: ab.y + ab.height + 4 }
+    case 'TR':
+      return { x: ab.x + ab.width - ow, y: ab.y + ab.height + 4 }
+    case 'BL':
+      return { x: ab.x, y: ab.y - oh - 4 }
+    default:
+      return { x: Math.max(0, sw - ow - ANCHOR_MARGIN), y: Math.max(0, sh - oh - ANCHOR_MARGIN) }
   }
 }
 
@@ -185,8 +200,8 @@ function createSplashWindow(): void {
     skipTaskbar: true,
     webPreferences: {
       sandbox: true,
-      contextIsolation: true,
-    },
+      contextIsolation: true
+    }
   })
   splashWindow.loadFile(join(__dirname, '../../resources/splash.html'))
   splashWindow.once('ready-to-show', () => splashWindow?.show())
@@ -210,18 +225,16 @@ function createQuickCaptureWindow(): void {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
-      contextIsolation: true,
-    },
+      contextIsolation: true
+    }
   })
   setQuickCaptureWindow(quickCaptureWindow)
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    quickCaptureWindow.loadURL(
-      `${process.env['ELECTRON_RENDERER_URL']}?window=quickcapture`,
-    )
+    quickCaptureWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}?window=quickcapture`)
   } else {
     quickCaptureWindow.loadFile(join(__dirname, '../renderer/index.html'), {
-      query: { window: 'quickcapture' },
+      query: { window: 'quickcapture' }
     })
   }
 
@@ -345,7 +358,6 @@ app.whenReady().then(() => {
   registerSubmitHandlers()
   setOverlayWindowGetter(() => overlayWindow)
   registerWindowHandlers()
-  startCalendarRefreshTimer(() => overlayWindow)
 
   createOverlayWindow()
   createQuickCaptureWindow()
@@ -368,10 +380,13 @@ app.whenReady().then(() => {
     splashWindow = null
   }
 
-  setTimeout(() => {
-    timerDone = true
-    tryCloseSplash()
-  }, Math.max(400, MIN_DISPLAY_MS - (Date.now() - splashStart)))
+  setTimeout(
+    () => {
+      timerDone = true
+      tryCloseSplash()
+    },
+    Math.max(400, MIN_DISPLAY_MS - (Date.now() - splashStart))
+  )
 
   if (overlayWindow) {
     overlayWindow.once('ready-to-show', () => {

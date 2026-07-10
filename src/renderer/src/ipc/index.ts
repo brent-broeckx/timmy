@@ -3,7 +3,21 @@
 // All other renderer code imports from here — never calls window.timmy directly.
 
 import { IPC } from '@shared/types'
-import type { TimeBlock, DayBoundary, Project, WorkOrder, AppConfig, CalendarEvent, CalendarConnectorStatus, TaskStartInput, IpcResponse, SubmitEntry, SubmitProgress, SubmitPrompt, SubmitResult } from '@shared/types'
+import type {
+  TimeBlock,
+  DayBoundary,
+  Project,
+  WorkOrder,
+  AppConfig,
+  CalendarEvent,
+  CalendarImportResult,
+  TaskStartInput,
+  IpcResponse,
+  SubmitEntry,
+  SubmitProgress,
+  SubmitPrompt,
+  SubmitResult
+} from '@shared/types'
 
 async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
   const response = await window.timmy.invoke<T>(channel, ...args)
@@ -46,16 +60,16 @@ export const ipc = {
     startDay: (date: string, startTime: string) =>
       invoke<DayBoundary>(IPC.TIMELINE_START_DAY, date, startTime),
     endDay: (date: string, endTime: string) =>
-      invoke<DayBoundary>(IPC.TIMELINE_END_DAY, date, endTime),
+      invoke<DayBoundary>(IPC.TIMELINE_END_DAY, date, endTime)
   },
   task: {
     start: (input: TaskStartInput) => invoke<TimeBlock>(IPC.TASK_START, input),
     stop: (id: string) => invoke<TimeBlock>(IPC.TASK_STOP, id),
-    getRecent: () => invoke<string[]>(IPC.TASK_GET_RECENT),
+    getRecent: () => invoke<string[]>(IPC.TASK_GET_RECENT)
   },
   config: {
     get: () => invoke<AppConfig>(IPC.CONFIG_GET),
-    set: (config: AppConfig) => invoke<void>(IPC.CONFIG_SET, config),
+    set: (config: AppConfig) => invoke<void>(IPC.CONFIG_SET, config)
   },
   project: {
     list: () => invoke<Project[]>(IPC.PROJECT_LIST),
@@ -63,21 +77,18 @@ export const ipc = {
       invoke<Project>(IPC.PROJECT_CREATE, data),
     update: (p: Pick<Project, 'id' | 'name' | 'clientName' | 'active'>) =>
       invoke<void>(IPC.PROJECT_UPDATE, p),
-    delete: (id: string) => invoke<void>(IPC.PROJECT_DELETE, id),
+    delete: (id: string) => invoke<void>(IPC.PROJECT_DELETE, id)
   },
   workorder: {
     create: (data: { projectId: string; code: string; label: string; description: string }) =>
       invoke<WorkOrder>(IPC.WORKORDER_CREATE, data),
     update: (wo: WorkOrder) => invoke<void>(IPC.WORKORDER_UPDATE, wo),
-    delete: (id: string) => invoke<void>(IPC.WORKORDER_DELETE, id),
+    delete: (id: string) => invoke<void>(IPC.WORKORDER_DELETE, id)
   },
   calendar: {
-    getStatus: () => invoke<CalendarConnectorStatus>(IPC.CALENDAR_GET_STATUS),
-    connect: () => invoke<CalendarConnectorStatus>(IPC.CALENDAR_CONNECT),
-    disconnect: () => invoke<void>(IPC.CALENDAR_DISCONNECT),
-    fetchEvents: (date: string) => invoke<{ imported: number; allDay: number; found: number }>(IPC.CALENDAR_FETCH_EVENTS, date),
+    importCsv: (csvText: string) => invoke<CalendarImportResult>(IPC.CALENDAR_IMPORT_CSV, csvText),
     getEvents: (date: string) => invoke<CalendarEvent[]>(IPC.CALENDAR_GET_EVENTS, date),
-    pullEvent: (eventId: string) => invoke<void>(IPC.CALENDAR_PULL_EVENT, eventId),
+    pullEvent: (eventId: string) => invoke<void>(IPC.CALENDAR_PULL_EVENT, eventId)
   },
   window: {
     hideQuickCapture: () => window.timmy.send(IPC.WINDOW_HIDE_QUICK_CAPTURE),
@@ -87,7 +98,7 @@ export const ipc = {
     hideOverlay: () => window.timmy.send(IPC.WINDOW_HIDE_OVERLAY),
     minimizeOverlay: () => window.timmy.send(IPC.WINDOW_MINIMIZE_OVERLAY),
     hideAnchor: () => window.timmy.send(IPC.WINDOW_HIDE_ANCHOR),
-    repositionAnchor: () => window.timmy.send(IPC.WINDOW_REPOSITION_ANCHOR),
+    repositionAnchor: () => window.timmy.send(IPC.WINDOW_REPOSITION_ANCHOR)
   },
   // Push: main → renderer with block payload
   onTaskChanged: (cb: (block: TimeBlock) => void): void => {
@@ -126,7 +137,7 @@ export const ipc = {
     confirmWeek: (weekStart: string, confirmed: boolean) =>
       invoke<void>(IPC.SUBMIT_CONFIRM_WEEK, weekStart, confirmed),
     cancel: () => invoke<void>(IPC.SUBMIT_CANCEL),
-    getResult: () => invoke<SubmitResult | null>(IPC.SUBMIT_GET_RESULT),
+    getResult: () => invoke<SubmitResult | null>(IPC.SUBMIT_GET_RESULT)
   },
   // Push: submit progress update
   onSubmitProgress: (cb: (p: SubmitProgress) => void): void => {
@@ -141,7 +152,7 @@ export const ipc = {
   },
   offSubmitPrompt: (cb: (p: SubmitPrompt) => void): void => {
     unregisterPush(cb, IPC.STATE_SUBMIT_PROMPT)
-  },
+  }
 }
 
 // Re-export response type so components don't need to import from @shared

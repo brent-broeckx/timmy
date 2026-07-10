@@ -24,8 +24,10 @@ timmy/
 │   │   ├── index.ts          # App entry: windows, tray, shortcuts, IPC setup
 │   │   ├── ipc/
 │   │   │   ├── storage.ts    # All ipcMain.handle() handlers (timeline, tasks, config)
-│   │   │   ├── calendar.ts   # Calendar connector IPC handlers
+│   │   │   ├── calendar.ts   # Outlook CSV calendar import IPC handlers
 │   │   │   └── submit.ts     # Playwright auto-submit IPC handlers
+│   │   ├── connectors/
+│   │   │   └── outlook-csv-calendar.ts # Outlook CSV import + sourceId dedupe
 │   │   ├── playwright/
 │   │   │   ├── errors.ts     # Typed Playwright error classes
 │   │   │   ├── session.ts    # Persistent Chromium context (Entra ID SSO)
@@ -80,7 +82,7 @@ timmy/
 
 **Phase 4 — Playwright Auto-Submit** ✅ CORE COMPLETE (submit history pending)
 
-**Phase 3 — Calendar Integration** ✅ COMPLETE — see `plans/phase3-calendar-integration.md` for detail.
+**Phase 3 — Calendar Integration** ✅ COMPLETE — Outlook CSV import replaces the old Graph connector.
 
 **Phase 2 — Polish & Glass UI** ✅ COMPLETE — see `plans/phase2-polish-glass-ui.md` for detail.
 
@@ -97,8 +99,8 @@ Do NOT implement Phase 4+ features unless explicitly asked.
 3. **IPC whitelist**: The preload (`src/preload/index.ts`) enforces an allowlist of channels. Adding a new channel requires updating both the preload whitelist AND `shared/types.ts`.
 4. **No `any`**: `"strict": true` is set. Use `unknown` and type guards instead of `any`.
 5. **Undo before mutation**: Every Zustand action that mutates timeline state MUST call the snapshot logic before applying the change. See `useTimelineStore.ts` for the pattern.
-6. **Read-only connectors**: When Phase 3/4 connectors are added, they must use read-only OAuth scopes and must never write to external systems.
-7. **Local data only**: No HTTP calls except to approved external APIs (Graph, GitHub, Jira, ADO, local LLM). No analytics, no telemetry.
+6. **Read-only connectors/importers**: External data sources must never write to external systems. Calendar import is manual Outlook CSV only.
+7. **Local data only**: No HTTP calls except to approved external APIs (GitHub, Jira, ADO, local LLM). No analytics, no telemetry.
 
 ---
 
@@ -124,10 +126,10 @@ Do NOT implement Phase 4+ features unless explicitly asked.
 
 The app has two BrowserWindows from startup:
 
-| Window | Role | Always on top | Transparent |
-|--------|------|--------------|-------------|
-| `overlayWindow` | Main panel (timeline, settings) | No | No (Phase 1) |
-| `quickCaptureWindow` | Fast task input bar | Yes | Yes |
+| Window               | Role                            | Always on top | Transparent  |
+| -------------------- | ------------------------------- | ------------- | ------------ |
+| `overlayWindow`      | Main panel (timeline, settings) | No            | No (Phase 1) |
+| `quickCaptureWindow` | Fast task input bar             | Yes           | Yes          |
 
 Both load the same renderer bundle (`src/renderer/`). `App.tsx` checks `?window=quickcapture` in the URL query string to decide which component to render.
 
@@ -144,6 +146,7 @@ The overlay window intercepts `close` and hides instead of quitting. The app liv
 - `openDb(path)` is the testable version — pass `':memory:'` in tests
 
 **Adding a migration:**
+
 1. Add a new entry to the `MIGRATIONS` array in `db.ts`:
    ```ts
    { filename: '002_your_name.sql', sql: `ALTER TABLE ...` }
@@ -154,11 +157,11 @@ The overlay window intercepts `close` and hides instead of quitting. The app liv
 
 ## SQLite ↔ TypeScript naming convention
 
-| SQLite column | TypeScript field |
-|---------------|-----------------|
-| `snake_case`  | `camelCase`      |
-| `project_id`  | `projectId`      |
-| `start_time`  | `startTime`      |
+| SQLite column | TypeScript field                           |
+| ------------- | ------------------------------------------ |
+| `snake_case`  | `camelCase`                                |
+| `project_id`  | `projectId`                                |
+| `start_time`  | `startTime`                                |
 | `deleted`     | `deleted` (boolean, stored as 0/1 integer) |
 
 All DB→TypeScript mapping happens in `rowToBlock()` in `ipc/storage.ts`.
@@ -167,19 +170,21 @@ All DB→TypeScript mapping happens in `rowToBlock()` in `ipc/storage.ts`.
 
 ## Zustand Stores
 
-| Store | Purpose |
-|-------|---------|
-| `useTimelineStore` | Today's blocks, day boundary, undo stack |
-| `useTaskStore` | Currently running task + recent task titles |
-| `useConfigStore` | App config + projects/work orders |
+| Store              | Purpose                                     |
+| ------------------ | ------------------------------------------- |
+| `useTimelineStore` | Today's blocks, day boundary, undo stack    |
+| `useTaskStore`     | Currently running task + recent task titles |
+| `useConfigStore`   | App config + projects/work orders           |
 
 ### Undo stack rules
+
 - Only `useTimelineStore` has an undo stack.
 - Every mutating action (`addBlock`, `updateBlock`, `deleteBlock`, `startDay`, `endDay`) snapshots state BEFORE applying and pushes to `undoStack`.
 - Stack is capped at `undoDepth` (default 20). Oldest entries are dropped.
 - `syncBlockLocal(block)` updates state without touching the undo stack — used when the DB was already updated via a different IPC path (e.g. `task:stop`).
 
 ### Cross-store calls
+
 - `useTaskStore` calls `useTimelineStore.getState()` (one-way dependency, no circular imports).
 - `useTimelineStore` does NOT import `useTaskStore`. Cross-store concerns (e.g. clearing `currentTask` after undo) are handled in the `Timeline` component.
 
@@ -191,15 +196,15 @@ All DB→TypeScript mapping happens in `rowToBlock()` in `ipc/storage.ts`.
 - **Design tokens** defined in `@theme {}` block in `src/renderer/src/styles/index.css`
 - Token reference:
 
-| Token | Value | Use |
-|-------|-------|-----|
-| `--color-background` | `#0f0f1a` | Page background |
-| `--color-surface` | `#161625` | Card/panel backgrounds |
-| `--color-surface-elevated` | `#1e1e30` | Inputs, dropdowns |
-| `--color-border` | `#2a2a40` | Borders |
-| `--color-accent` | `#6c63ff` | Interactive elements |
-| `--color-text-primary` | `#e8e8f0` | Body text |
-| `--color-text-muted` | `#6e6e88` | Secondary text |
+| Token                      | Value     | Use                    |
+| -------------------------- | --------- | ---------------------- |
+| `--color-background`       | `#0f0f1a` | Page background        |
+| `--color-surface`          | `#161625` | Card/panel backgrounds |
+| `--color-surface-elevated` | `#1e1e30` | Inputs, dropdowns      |
+| `--color-border`           | `#2a2a40` | Borders                |
+| `--color-accent`           | `#6c63ff` | Interactive elements   |
+| `--color-text-primary`     | `#e8e8f0` | Body text              |
+| `--color-text-muted`       | `#6e6e88` | Secondary text         |
 
 - Phase 1: no transparency on the overlay window. `backgroundColor: '#0f0f1a'` is set on the BrowserWindow.
 - Phase 2: set `transparent: true` and add `backdrop-filter: blur(12px)` for glassmorphism.
@@ -253,6 +258,7 @@ npm run test:watch
 ## Electron Forge
 
 **Deferred to Phase 7.** The project uses `electron-builder` (from the scaffold) for packaging. When Phase 7 arrives:
+
 - Run `npx electron-forge import` to add Forge on top
 - Or configure `electron-builder` packaging directly (already partially set up via `electron-builder.yml`)
 
@@ -264,5 +270,5 @@ npm run test:watch
 2. Update `plans/` with a plan doc before writing any code.
 3. If adding an IPC channel: follow the 5-step IPC pattern above.
 4. If adding a new DB table: add a new migration entry in `db.ts`.
-5. If adding a new connector (Phase 3+): create it in `src/main/connectors/` implementing the connector pattern in `graph-calendar.ts`. Read-only scopes only.
+5. If adding a new connector/importer (Phase 3+): create it in `src/main/connectors/`. External systems stay read-only; calendar data comes from manual Outlook CSV import.
 6. Never add `// TODO` comments — either implement it or leave it out.

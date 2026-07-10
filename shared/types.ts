@@ -39,11 +39,8 @@ export const IPC = {
   WINDOW_MINIMIZE_OVERLAY: 'window:minimizeOverlay',
   WINDOW_HIDE_ANCHOR: 'window:hideAnchor',
   WINDOW_REPOSITION_ANCHOR: 'window:repositionAnchor',
-  // Calendar connector
-  CALENDAR_GET_STATUS: 'calendar:getStatus',
-  CALENDAR_CONNECT: 'calendar:connect',
-  CALENDAR_DISCONNECT: 'calendar:disconnect',
-  CALENDAR_FETCH_EVENTS: 'calendar:fetchEvents',
+  // Calendar import
+  CALENDAR_IMPORT_CSV: 'calendar:importCsv',
   CALENDAR_GET_EVENTS: 'calendar:getEvents',
   CALENDAR_PULL_EVENT: 'calendar:pullEvent',
   // Submit / Playwright automation
@@ -62,7 +59,7 @@ export const IPC = {
   STATE_OVERLAY_VISIBILITY: 'state:overlayVisibility',
   STATE_CALENDAR_UPDATED: 'state:calendarUpdated',
   STATE_SUBMIT_PROGRESS: 'state:submitProgress',
-  STATE_SUBMIT_PROMPT: 'state:submitPrompt',
+  STATE_SUBMIT_PROMPT: 'state:submitPrompt'
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
@@ -121,7 +118,7 @@ export type DayBoundary = {
 }
 
 export type ConnectorConfig = {
-  type: 'graph-calendar' | 'git' | 'github' | 'jira' | 'ado'
+  type: 'git' | 'github' | 'jira' | 'ado'
   enabled: boolean
   config: Record<string, string>
 }
@@ -129,23 +126,26 @@ export type ConnectorConfig = {
 export type CalendarEvent = {
   id: string
   date: string
-  startTime: string | null   // null = all-day event
+  startTime: string | null // null = all-day event
   endTime: string | null
   title: string
   organizer: string | null
   isAllDay: boolean
-  sourceId: string           // Graph event ID
+  sourceId: string // Outlook export event ID
   importedToTimeline: boolean
 }
 
-export type CalendarConnectorStatus = {
-  connected: boolean
-  email: string | null
-  lastFetchedAt: string | null
+export type CalendarImportResult = {
+  imported: number
+  updated: number
+  skipped: number
+  allDay: number
+  found: number
+  errors: string[]
 }
 
 export type SubmitEntry = {
-  date: string             // ISO date "YYYY-MM-DD"
+  date: string // ISO date "YYYY-MM-DD"
   workOrderCode: string
   workOrderId: string
   projectId: string
@@ -154,19 +154,28 @@ export type SubmitEntry = {
 }
 
 export type SubmitProgress = {
-  currentWeek: string      // ISO date of week Monday
-  weekLabel: string        // YYYYWW
-  status: 'idle' | 'navigating' | 'filling' | 'awaiting-confirm' | 'submitting' | 'waiting-for-login' | 'complete' | 'error' | 'cancelled'
+  currentWeek: string // ISO date of week Monday
+  weekLabel: string // YYYYWW
+  status:
+    | 'idle'
+    | 'navigating'
+    | 'filling'
+    | 'awaiting-confirm'
+    | 'submitting'
+    | 'waiting-for-login'
+    | 'complete'
+    | 'error'
+    | 'cancelled'
   message: string
-  progress: number         // 0–100
+  progress: number // 0–100
   weeksTotal: number
   weeksDone: number
 }
 
 export type SubmitPrompt = {
-  weekStart: string        // ISO date of Monday
-  weekEnd: string          // ISO date of Sunday
-  weekLabel: string        // YYYYWW
+  weekStart: string // ISO date of Monday
+  weekEnd: string // ISO date of Sunday
+  weekLabel: string // YYYYWW
   entries: SubmitEntry[]
 }
 
@@ -199,7 +208,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   glassIntensity: 80,
   undoStackDepth: 20,
   quickCaptureWorkOrderId: null,
-  connectors: [],
+  connectors: []
 }
 
 // ─── Utility ─────────────────────────────────────────────────────────────────

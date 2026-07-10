@@ -28,11 +28,8 @@ const HANDLE_CHANNELS = new Set<string>([
   IPC.WORKORDER_CREATE,
   IPC.WORKORDER_UPDATE,
   IPC.WORKORDER_DELETE,
-  // Calendar connector
-  IPC.CALENDAR_GET_STATUS,
-  IPC.CALENDAR_CONNECT,
-  IPC.CALENDAR_DISCONNECT,
-  IPC.CALENDAR_FETCH_EVENTS,
+  // Calendar import
+  IPC.CALENDAR_IMPORT_CSV,
   IPC.CALENDAR_GET_EVENTS,
   IPC.CALENDAR_PULL_EVENT,
   // Submit / Playwright automation
@@ -44,7 +41,7 @@ const HANDLE_CHANNELS = new Set<string>([
   IPC.SUBMIT_GET_PROGRESS,
   IPC.SUBMIT_CONFIRM_WEEK,
   IPC.SUBMIT_CANCEL,
-  IPC.SUBMIT_GET_RESULT,
+  IPC.SUBMIT_GET_RESULT
 ])
 
 const SEND_CHANNELS = new Set<string>([
@@ -55,7 +52,7 @@ const SEND_CHANNELS = new Set<string>([
   IPC.WINDOW_HIDE_OVERLAY,
   IPC.WINDOW_MINIMIZE_OVERLAY,
   IPC.WINDOW_HIDE_ANCHOR,
-  IPC.WINDOW_REPOSITION_ANCHOR,
+  IPC.WINDOW_REPOSITION_ANCHOR
 ])
 
 const PUSH_CHANNELS = new Set<string>([
@@ -64,7 +61,7 @@ const PUSH_CHANNELS = new Set<string>([
   IPC.STATE_OVERLAY_VISIBILITY,
   IPC.STATE_CALENDAR_UPDATED,
   IPC.STATE_SUBMIT_PROGRESS,
-  IPC.STATE_SUBMIT_PROMPT,
+  IPC.STATE_SUBMIT_PROMPT
 ])
 
 const timmyApi = {
@@ -91,7 +88,7 @@ const timmyApi = {
       throw new Error(`IPC push channel '${channel}' is not permitted`)
     }
     ipcRenderer.off(channel, cb as never)
-  },
+  }
 }
 
 if (process.contextIsolated) {
