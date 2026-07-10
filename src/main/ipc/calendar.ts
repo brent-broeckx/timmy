@@ -6,9 +6,9 @@ import { ipcMain } from 'electron'
 import { IPC } from '@shared/types'
 import type { CalendarEvent, CalendarImportResult, IpcResponse } from '@shared/types'
 import {
-  importOutlookCalendarCsv,
-  getCalendarEventsForDate,
-  pullCalendarEventToTimeline
+    importOutlookCalendarCsv,
+    getCalendarEventsForDate,
+    pullCalendarEventToTimeline
 } from '../connectors/outlook-csv-calendar'
 import { getOverlayWindow } from '../windows'
 

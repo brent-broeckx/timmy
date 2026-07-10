@@ -4,19 +4,19 @@
 
 import { IPC } from '@shared/types'
 import type {
-  TimeBlock,
-  DayBoundary,
-  Project,
-  WorkOrder,
-  AppConfig,
-  CalendarEvent,
-  CalendarImportResult,
-  TaskStartInput,
-  IpcResponse,
-  SubmitEntry,
-  SubmitProgress,
-  SubmitPrompt,
-  SubmitResult
+    TimeBlock,
+    DayBoundary,
+    Project,
+    WorkOrder,
+    AppConfig,
+    CalendarEvent,
+    CalendarImportResult,
+    TaskStartInput,
+    IpcResponse,
+    SubmitEntry,
+    SubmitProgress,
+    SubmitPrompt,
+    SubmitResult
 } from '@shared/types'
 
 async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
